@@ -26,11 +26,24 @@ fi
 SNAPSHOT="$(mktemp -d "${TMPDIR:-/tmp}/dev-qual-precommit.XXXXXX")"
 trap 'rm -rf "$SNAPSHOT"' EXIT
 git -C "$TOP" checkout-index --all --prefix="$SNAPSHOT/"
-# Installed tooling is untracked, so link it in for lint/typecheck scripts.
-# ponytail: top-level dependency dirs only; nested ones (monorepo packages) are not linked
-for dep in node_modules .venv venv; do
-  if [ -e "$TOP/$dep" ]; then ln -s "$TOP/$dep" "$SNAPSHOT/$dep"; fi
+# Installed tooling is untracked, so link it in for lint/typecheck scripts —
+# at any depth, since each monorepo workspace can have its own.
+(cd "$TOP" && find . \( -name node_modules -o -name .venv -o -name venv \) -type d -prune \
+  -not -path './.git/*') | while IFS= read -r dep; do
+  if [ -d "$SNAPSHOT/$(dirname "$dep")" ]; then ln -s "$TOP/$dep" "$SNAPSHOT/$dep"; fi
 done
+# Submodules are exported as empty directories; link in their checkouts, so
+# config that extends a submodule's files (dev-qual's among them) resolves.
+if [ -f "$TOP/.gitmodules" ]; then
+  git config --file "$TOP/.gitmodules" --get-regexp '\.path$' | cut -d' ' -f2- |
+    while IFS= read -r sub; do
+      if [ -d "$TOP/$sub" ]; then
+        rm -rf "${SNAPSHOT:?}/$sub"
+        mkdir -p "$(dirname "$SNAPSHOT/$sub")"
+        ln -s "$TOP/$sub" "$SNAPSHOT/$sub"
+      fi
+    done
+fi
 bash "$CHECK" --fast --project "$SNAPSHOT"
 
 # 2. Steps that rewrite files — formatting, generated docs, licence lists.
