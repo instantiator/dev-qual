@@ -181,6 +181,16 @@ function main() {
     process.exit(2);
   }
 
+  // npm reports its own failures (e.g. ENOLOCK: no lockfile) as JSON too.
+  // Treat anything without a `vulnerabilities` object as a failed audit, so
+  // it can never read as an all-clear.
+  if (auditReport.error || typeof auditReport.vulnerabilities !== "object") {
+    const { code = "unknown", summary = "unexpected npm audit output", detail = "" } =
+      auditReport.error ?? {};
+    console.error(`vuln-report: npm audit failed (${code}): ${summary}${detail ? `\n${detail}` : ""}`);
+    process.exit(2);
+  }
+
   const { text, exitCode } = buildReport(auditReport);
   console.log(text);
   process.exit(exitCode);

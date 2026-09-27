@@ -47,7 +47,7 @@ for stack in $STACKS; do
   case "$stack" in
     node) report node node node "$TOOLS/typescript/tools/vuln-report.mjs" --project "$PROJECT" ;;
     python) report python python3 python3 "$TOOLS/python/tools/vuln_report.py" --project "$PROJECT" ;;
-    dotnet) report dotnet dotnet dotnet run "$TOOLS/csharp/tools/vuln-report.cs" -- --project "$PROJECT" ;;
+    dotnet) report dotnet dotnet dotnet run --file "$TOOLS/csharp/tools/vuln-report.cs" -- --project "$PROJECT" ;;
   esac
 done
 

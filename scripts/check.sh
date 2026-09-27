@@ -150,7 +150,7 @@ check_dotnet() {
     run_stage "${STAGE_PREFIX}format-fix" "review formatter output" dotnet format
   fi
   run_stage "${STAGE_PREFIX}format" "run: dotnet format" dotnet format --verify-no-changes
-  check_baseline msbuild dotnet dotnet run "$LANG_TOOLS/csharp/tools/check-baseline.cs" --
+  check_baseline msbuild dotnet dotnet run --file "$LANG_TOOLS/csharp/tools/check-baseline.cs" --
   [ "$FAST" = 1 ] && return 0
   # Analyzers run within the build, so build doubles as lint
   run_stage "${STAGE_PREFIX}build" "fix build errors/warnings" dotnet build --nologo
@@ -192,6 +192,11 @@ check_python() {
 }
 
 audit_node() {
+  # npm audit reads the lockfile; without one there is nothing to audit
+  if [ ! -f package-lock.json ] && [ ! -f npm-shrinkwrap.json ]; then
+    record_result "audit:node" SKIP "no package-lock.json to audit: commit your lockfile (npm i --package-lock-only)"
+    return 0
+  fi
   run_stage "audit:node" "run: $SCRIPT_DIR/vuln-report.sh for ranked next steps" \
     npm audit --audit-level=high
 }

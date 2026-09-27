@@ -15,12 +15,12 @@ TOOL="$TOOLS_DIR/vuln-report.cs"
 FIXTURES="$SCRIPT_DIR/fixtures"
 
 # --- empty report: exit 0, no packages listed ---
-OUT="$(dotnet run "$TOOL" -- --input "$FIXTURES/vuln-empty.json" 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --input "$FIXTURES/vuln-empty.json" 2>&1)" && CODE=0 || CODE=$?
 assert_eq "0" "$CODE" "empty report exits 0"
 assert_contains "$OUT" "No vulnerabilities found" "empty report message"
 
 # --- mixed report: severity ordering, direct before transitive, de-duplication ---
-OUT="$(dotnet run "$TOOL" -- --input "$FIXTURES/vuln-mixed.json" 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --input "$FIXTURES/vuln-mixed.json" 2>&1)" && CODE=0 || CODE=$?
 assert_eq "1" "$CODE" "mixed report exits 1"
 
 LINES="$(printf '%s\n' "$OUT" | grep -E '^[A-Z]+ ')"
@@ -63,15 +63,15 @@ assert_contains "$OUT" "2 moderate" "summary counts moderate"
 assert_contains "$OUT" "skills/deps-audit" "summary points at deps-audit skill"
 
 # --- malformed JSON exits 2 ---
-OUT="$(dotnet run "$TOOL" -- --input "$FIXTURES/vuln-malformed.json" 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --input "$FIXTURES/vuln-malformed.json" 2>&1)" && CODE=0 || CODE=$?
 assert_eq "2" "$CODE" "malformed JSON exits 2"
 
 # --- invalid args exit 2 ---
-OUT="$(dotnet run "$TOOL" -- --nonsense 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --nonsense 2>&1)" && CODE=0 || CODE=$?
 assert_eq "2" "$CODE" "unknown argument exits 2"
 
 # --- --help exits 0 and documents usage ---
-OUT="$(dotnet run "$TOOL" -- --help 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --help 2>&1)" && CODE=0 || CODE=$?
 assert_eq "0" "$CODE" "--help exits 0"
 assert_contains "$OUT" "vuln-report" "--help mentions the tool name"
 assert_contains "$OUT" "--input" "--help documents --input"

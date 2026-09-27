@@ -100,3 +100,19 @@ test("CLI: mixed vulnerabilities via --input exits 1", () => {
     assert.match(error.stdout, /CRITICAL\s+minimist/);
   }
 });
+
+test("CLI: an npm error report (no lockfile) exits 2, never an all-clear", () => {
+  let status = 0;
+  let stdout = "";
+  let stderr = "";
+  try {
+    stdout = execFileSync(process.execPath, [MODULE_PATH, "--input", path.join(HERE, "fixtures", "vuln-enolock.json")], { encoding: "utf8", stdio: "pipe" });
+  } catch (error) {
+    status = error.status;
+    stdout = error.stdout;
+    stderr = error.stderr;
+  }
+  assert.equal(status, 2);
+  assert.doesNotMatch(stdout, /No vulnerabilities found/);
+  assert.match(stderr, /ENOLOCK/);
+});

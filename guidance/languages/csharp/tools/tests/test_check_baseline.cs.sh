@@ -18,7 +18,7 @@ BASELINE_TARGETS_PATH="$TOOLS_DIR/Baseline.targets"
 run_check() {
   local dir="$1" out code
   shift
-  out="$(dotnet run "$TOOL" -- --project "$dir" "$@" 2>&1)" && code=0 || code=$?
+  out="$(dotnet run --file "$TOOL" -- --project "$dir" "$@" 2>&1)" && code=0 || code=$?
   printf '%s\x1e%s' "$code" "$out"
 }
 
@@ -95,7 +95,7 @@ mkdir -p "$DIR5/dev-qual/guidance/languages/csharp/tools"
 cp "$BASELINE_PATH" "$DIR5/dev-qual/guidance/languages/csharp/tools/"
 cp "$TOOL" "$DIR5/dev-qual/guidance/languages/csharp/tools/"
 NESTED_TOOL="$DIR5/dev-qual/guidance/languages/csharp/tools/check-baseline.cs"
-OUT="$(dotnet run "$NESTED_TOOL" -- --project "$DIR5" 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$NESTED_TOOL" -- --project "$DIR5" 2>&1)" && CODE=0 || CODE=$?
 assert_eq "1" "$CODE" "nested-baseline project exits 1 (not yet adopted)"
 # shellcheck disable=SC2016 # literal MSBuild property syntax, not shell expansion
 assert_contains "$OUT" '$(MSBuildThisFileDirectory)dev-qual/guidance/languages/csharp/tools/Baseline.props' \
@@ -110,11 +110,11 @@ CODE="${RESULT%%$'\x1e'*}"
 assert_eq "2" "$CODE" "malformed XML exits 2"
 
 # --- invalid args exit 2 ---
-OUT="$(dotnet run "$TOOL" -- --nonsense 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --nonsense 2>&1)" && CODE=0 || CODE=$?
 assert_eq "2" "$CODE" "unknown argument exits 2"
 
 # --- --help exits 0 and documents usage ---
-OUT="$(dotnet run "$TOOL" -- --help 2>&1)" && CODE=0 || CODE=$?
+OUT="$(dotnet run --file "$TOOL" -- --help 2>&1)" && CODE=0 || CODE=$?
 assert_eq "0" "$CODE" "--help exits 0"
 assert_contains "$OUT" "check-baseline" "--help mentions the tool name"
 assert_contains "$OUT" "--project" "--help documents --project"
@@ -131,5 +131,14 @@ done
 rm -f "$XML_ERR"
 
 rm -rf "$DIR1" "$DIR2" "$DIR2B" "$DIR3" "$DIR4A" "$DIR4" "$DIR4D" "$DIR5" "$DIR6"
+
+# Run from inside a project whose .csproj is in the cwd, as check.sh does:
+# a bare `dotnet run <file>.cs` would run that project instead of the tool
+CWD_PROJ="$(mktemp -d)"
+printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>\n' >"$CWD_PROJ/Lib.csproj"
+OUT="$(cd "$CWD_PROJ" && dotnet run --file "$TOOL" -- --project . 2>&1)" && CODE=0 || CODE=$?
+assert_eq "1" "$CODE" "runs the tool, not the project in the cwd"
+assert_contains "$OUT" "Baseline.props" "prints the adoption lines from inside a project dir"
+rm -rf "$CWD_PROJ"
 
 finish

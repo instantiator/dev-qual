@@ -30,7 +30,7 @@ internal static class VulnReport
         vuln-report — ranked, actionable dotnet list package --vulnerable report
 
         Usage:
-          dotnet run vuln-report.cs -- [--project <dir>] [--input <file>]
+          dotnet run --file vuln-report.cs -- [--project <dir>] [--input <file>]
 
         Options:
           --project <dir>  Project or solution directory to audit (default: current directory)
@@ -185,13 +185,13 @@ internal static class VulnReport
         return (string.Join('\n', lines), 1);
     }
 
-    /// <summary>Runs `dotnet list package --vulnerable --include-transitive --format json`
-    /// in a project directory and returns its stdout.</summary>
-    private static string RunDotnetListPackage(string projectDir)
+    /// <summary>Runs `dotnet` with the given arguments in a directory and returns its
+    /// exit code and captured output.</summary>
+    private static (int ExitCode, string Output, string Error) RunDotnet(string workingDir, string arguments)
     {
-        var startInfo = new ProcessStartInfo("dotnet", "list package --vulnerable --include-transitive --format json")
+        var startInfo = new ProcessStartInfo("dotnet", arguments)
         {
-            WorkingDirectory = projectDir,
+            WorkingDirectory = workingDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -202,12 +202,26 @@ internal static class VulnReport
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
+        return (process.ExitCode, output, error);
+    }
 
-        if (process.ExitCode != 0 && string.IsNullOrWhiteSpace(output))
+    /// <summary>Restores the project, then returns the vulnerable-package report as JSON.
+    /// Without a restore, `dotnet list package` reports no packages at all, which would
+    /// read as an all-clear.</summary>
+    private static string RunDotnetListPackage(string projectDir)
+    {
+        var restore = RunDotnet(projectDir, "restore --verbosity quiet");
+        if (restore.ExitCode != 0)
         {
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? "dotnet list package failed" : error);
+            throw new InvalidOperationException($"dotnet restore failed, so packages can't be audited:\n{restore.Output}{restore.Error}");
         }
-        return output;
+
+        var list = RunDotnet(projectDir, "list package --vulnerable --include-transitive --format json");
+        if (list.ExitCode != 0 && string.IsNullOrWhiteSpace(list.Output))
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(list.Error) ? "dotnet list package failed" : list.Error);
+        }
+        return list.Output;
     }
 
     /// <summary>Loads the raw audit JSON text, from --input or by running dotnet.</summary>

@@ -31,7 +31,7 @@ internal static class CheckBaseline
         check-baseline — verify a project adopts dev-qual's C# build baseline
 
         Usage:
-          dotnet run check-baseline.cs -- [--project <dir>]
+          dotnet run --file check-baseline.cs -- [--project <dir>]
 
         Options:
           --project <dir>  Project directory to check (default: current directory)

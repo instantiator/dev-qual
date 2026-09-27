@@ -15,7 +15,7 @@
     Adjust the path to wherever dev-qual is checked out relative to the
     importing file. Verify adoption with:
 
-      dotnet run tools/check-baseline.cs, passing the project dir with the
+      tools/check-baseline.cs (see csharp.md for the command), passing the project dir with the
       project option; see its help for the exact flag.
 
     NB. Baseline.props turns a missing `///` comment on a public member
