@@ -98,7 +98,7 @@ git submodule set-url dev-qual https://github.com/instantiator/dev-qual.git
 | _(default)_ | build, unit tests, `aislop scan` | pre-push hook |
 | `--comprehensive` | every test suite, package security audit | the final stage of a plan |
 
-`pre-commit` also runs `scripts/pre-commit-fixups.sh` if your project has one — formatting, generated files, licence lists — and re-stages what it changed, leaving partially-staged files alone.
+`pre-commit` checks exactly what is staged — unstaged edits and untracked files can neither block a commit nor hide a problem in it — then runs `scripts/pre-commit-fixups.sh` if your project has one (formatting, generated files, licence lists) and re-stages what it changed, leaving partially-staged files alone.
 
 Tools that take effort off the agent:
 
