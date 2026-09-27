@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # The quality gate. Detects every stack in the project, then runs:
-#   format check -> lint -> typecheck -> build -> unit tests -> aislop scan
+#   format check -> lint -> typecheck -> lint-baseline adoption -> build
+#   -> unit tests -> aislop scan
+# plus shellcheck, actionlint, and markdownlint wherever those files exist,
 # and prints a PASS/FAIL/SKIP table with a fix-hint per failure.
 # Missing tools SKIP with an install hint; the gate never crashes on absence.
+# A dev-qual checkout nested in the project (a submodule) is not linted.
 #
 # Usage: check.sh [--fast|--comprehensive] [--fix] [--suite <name>] [--project <dir>]
 #   --fast           format + lint + typecheck only (used by the pre-commit hook)

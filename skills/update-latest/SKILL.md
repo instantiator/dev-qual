@@ -2,7 +2,7 @@
 name: update-latest
 type: skill
 title: Update to latest
-description: Bring a project's installed guidance, skills, scripts, and hooks up to date without losing customisations. Use when the dev-qual submodule has moved on, or setup looks stale.
+description: Bring an installed dev-qual (project or user scope) up to date without losing customisations. Use when an update is reported, the dev-qual checkout has moved on, or setup looks stale.
 tags: [skill, maintenance, upgrade]
 ---
 

@@ -26,7 +26,7 @@ Behaviours that live in an agent's memory get forgotten, especially by small-con
 ## Steps
 
 1. Run `dev-qual/install.sh` (add `--user` for a user-scope install). It merges the entry instructions, wires each platform's adapter, offers the git hooks (project scope), and records the choices so upgrades and enable/disable can replay them.
-2. Git hooks: pre-commit runs `check.sh --fast`, and pre-push runs the full `check.sh`. At project scope the installer offers them. At user scope, the agent offers them the first time it works in a repo without them. To add them by hand: `dev-qual/scripts/setup-hooks.sh --project <repo>` (`--copy` to keep the repo's own hooks).
+2. Git hooks: pre-commit runs `check.sh --fast` on exactly what is staged, and pre-push runs the full `check.sh`. At project scope the installer offers them. At user scope, the agent offers them the first time it works in a repo without them. To add them by hand: `dev-qual/scripts/setup-hooks.sh --project <repo>` (`--copy` to keep the repo's own hooks).
 3. Agent hooks, via `dev-qual/scripts/agent-hook.sh`, are wired for Claude Code (`.claude/settings.json`) and pi (the package's extension):
    - **post-edit**: `check.sh --fast` after each edit; failures go back to the agent.
    - **session-start**: reports available dev-qual updates and, at user scope, offers the repo's git hooks.
