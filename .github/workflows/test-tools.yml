@@ -1,0 +1,49 @@
+name: test-tools
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: 3.x
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          echo "$PWD" >> "$GITHUB_PATH"
+
+      - name: Lint docs
+        run: bash scripts/lint-docs.sh
+
+      - name: Fast quality gate
+        run: bash scripts/check.sh --fast
+
+      - name: Unit tests (strict)
+        run: bash scripts/run-unit-tests.sh --strict

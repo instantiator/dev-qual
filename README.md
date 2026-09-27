@@ -60,3 +60,9 @@ Some of these rules refer to and lean on third party tools. With gratitude:
 |-|-|-|
 | [aislop](https://github.com/scanaislop/aislop) | Catch the slop AI coding agents leave in your code: narrative comments, swallowed exceptions, as-any casts, dead code, oversized functions. 50+ rules across 8 languages. | [MIT](https://github.com/scanaislop/aislop?tab=MIT-1-ov-file) |
 | [ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. The best code is the code you never wrote. | [MIT](https://github.com/DietrichGebert/ponytail?tab=MIT-1-ov-file) |
+
+## Contributing
+
+- Enable hooks: `./scripts/setup-hooks.sh --project .` (pre-commit runs the fast gate, pre-push runs the full gate, which includes dev-qual's own tests via `npm test`).
+- Run tests: `./scripts/run-unit-tests.sh` (`--strict` in CI, where a missing toolchain fails rather than skips). Tests live in `tests/` directories next to what they test — `test_*.sh`, `*.test.mjs`, `test_*.py`, `test_*.cs.sh` — and share helpers in `scripts/tests/lib/assert.sh`.
+- CI: `.github/workflows/test-tools.yml` runs lint-docs, the fast gate, and the strict tests on every PR, merge to main, and on demand.

@@ -216,6 +216,24 @@ if has_files '*.sh'; then
   fi
 fi
 
+WORKFLOW_DIRS=""
+for d in .github/workflows .gitea/workflows; do
+  [ -d "$d" ] && WORKFLOW_DIRS="$WORKFLOW_DIRS $d"
+done
+if [ -n "$WORKFLOW_DIRS" ]; then
+  if has_cmd actionlint; then
+    # List every workflow file explicitly: given any args, actionlint stops
+    # auto-discovering .github/workflows, and it never looks in .gitea/
+    # shellcheck disable=SC2086
+    WORKFLOW_ARGS="$(find $WORKFLOW_DIRS -name '*.yml' -o -name '*.yaml')"
+    # Word-splitting the collected args is intended here
+    # shellcheck disable=SC2086
+    run_stage "actionlint" "fix actionlint findings (see guidance/ci/github-actions.md)" actionlint $WORKFLOW_ARGS
+  else
+    record_result "actionlint" SKIP "install actionlint (mac: brew install actionlint)"
+  fi
+fi
+
 if has_files '*.md'; then
   if has_cmd markdownlint; then
     # The project's own config wins. Where it has none, use the config shipped

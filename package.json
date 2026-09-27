@@ -1,0 +1,8 @@
+{
+  "name": "dev-qual",
+  "version": "0.1.0",
+  "description": "Guidance, skills, and scripts that help coding agents deliver consistently high-quality code.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/instantiator/dev-qual.git" },
+  "scripts": { "test": "bash scripts/run-unit-tests.sh" }
+}
