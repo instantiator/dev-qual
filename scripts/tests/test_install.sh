@@ -200,4 +200,25 @@ else
   assert_contains "$OUT10" "pi install" "install prints the manual pi install command"
 fi
 
+# --- 11. a Prettier project gets its submodules (and the checkout) in
+#         .prettierignore, keeps its own entries, and check-install flags
+#         the block once the submodules change ---
+PROJ11="$(mk_tmp_project)"
+printf '{"devDependencies":{"prettier":"^3"}}\n' >"$PROJ11/package.json"
+printf 'own-entry\n' >"$PROJ11/.prettierignore"
+printf '[submodule "a"]\n\tpath = vendor/a\n\turl = x\n' >"$PROJ11/.gitmodules"
+bash "$PROJ11/dev-qual/install.sh" --project "$PROJ11" --yes --tier local --platforms none --hooks no >/dev/null
+IGNORE11="$(cat "$PROJ11/.prettierignore")"
+assert_contains "$IGNORE11" "own-entry" ".prettierignore keeps the project's own entries"
+assert_contains "$IGNORE11" "vendor/a" ".prettierignore lists the submodule"
+assert_contains "$IGNORE11" "# <!-- dev-qual:submodules:start -->" "block markers are # comments"
+assert_eq 1 "$(grep -cx 'dev-qual' "$PROJ11/.prettierignore")" ".prettierignore lists the checkout once"
+OUT11="$(bash "$PROJ11/dev-qual/scripts/check-install.sh" --project "$PROJ11" 2>&1 || true)"
+assert_contains "$OUT11" "PASS .prettierignore" "check-install passes a current block"
+printf '[submodule "b"]\n\tpath = vendor/b\n\turl = x\n' >>"$PROJ11/.gitmodules"
+OUT11="$(bash "$PROJ11/dev-qual/scripts/check-install.sh" --project "$PROJ11" 2>&1 || true)"
+assert_contains "$OUT11" "FAIL .prettierignore" "check-install flags a stale block"
+bash "$PROJ11/dev-qual/install.sh" --project "$PROJ11" --from-config >/dev/null
+assert_contains "$(cat "$PROJ11/.prettierignore")" "vendor/b" "re-install picks up the new submodule"
+
 finish

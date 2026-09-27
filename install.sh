@@ -127,6 +127,15 @@ else
   HOOKS="no"
 fi
 
+# 7b. Keep the project's formatter out of submodules (project scope only).
+#     Re-run on every upgrade, so a renamed or added submodule is picked up.
+if [ "$SCOPE" = "project" ] && uses_prettier "$PROJECT"; then
+  IGNORE_TMP="$(mktemp)"
+  ignored_paths "$PROJECT" "$REPO" >"$IGNORE_TMP"
+  merge_block "$PROJECT/.prettierignore" "dev-qual:submodules" "$IGNORE_TMP" "#"
+  rm -f "$IGNORE_TMP"
+fi
+
 # 8. Write the state file so `--from-config` and check-install.sh can find
 #    what was chosen. CHECKOUT is relative to the project for project scope,
 #    absolute for user scope.

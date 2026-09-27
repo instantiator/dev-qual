@@ -5,7 +5,7 @@
 # plus shellcheck, actionlint, and markdownlint wherever those files exist,
 # and prints a PASS/FAIL/SKIP table with a fix-hint per failure.
 # Missing tools SKIP with an install hint; the gate never crashes on absence.
-# A dev-qual checkout nested in the project (a submodule) is not linted.
+# Submodules (dev-qual among them) are not linted: each is its own repo's job.
 #
 # Usage: check.sh [--fast|--comprehensive] [--fix] [--suite <name>] [--project <dir>]
 #   --fast           format + lint + typecheck only (used by the pre-commit hook)
@@ -41,13 +41,12 @@ if [ "$FAST" = 1 ] && [ "$COMPREHENSIVE" = 1 ]; then
 fi
 
 cd "$PROJECT"
-# This dev-qual checkout, relative to the project when it sits inside it (a
-# submodule): its files are dev-qual's to lint, not the project's. When the
-# checkout IS the project, or lies outside it, SELF_REL stays empty and the
-# resulting ".//*" pattern matches nothing.
-CHECKOUT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SELF_REL=""
-case "$CHECKOUT" in "$PWD"/*) SELF_REL="${CHECKOUT#"$PWD"/}" ;; esac
+# Submodules and this checkout belong to other repos, so list_files skips them.
+# Starts non-empty: bash 3.2 errors on an empty array under set -u.
+EXCLUDES=(-not -path './.git/*')
+while IFS= read -r p; do
+  [ -n "$p" ] && EXCLUDES+=(-not -path "./$p/*")
+done <<<"$(ignored_paths . "$(cd "$SCRIPT_DIR/.." && pwd)")"
 STACKS="$(detect_stacks .)"
 MODE="full"
 if [ "$FAST" = 1 ]; then MODE="fast"; fi
@@ -70,14 +69,14 @@ run_stage() {
   fi
 }
 
-# List the project's files matching a name pattern, skipping build output and
-# virtualenvs: list_files <find-name-pattern>
+# List the project's files matching a name pattern, skipping build output,
+# virtualenvs, and EXCLUDES: list_files <find-name-pattern>
 list_files() {
   find . -name "$1" \
-    -not -path './node_modules/*' -not -path './.git/*' \
+    -not -path './node_modules/*' \
     -not -path './.venv/*' -not -path './venv/*' \
     -not -path './bin/*' -not -path './obj/*' \
-    -not -path "./$SELF_REL/*"
+    "${EXCLUDES[@]}"
 }
 
 # Report whether the project extends a language's dev-qual lint baseline:
