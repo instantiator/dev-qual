@@ -63,6 +63,41 @@ ENABLED="1"
 . "$GOVERNING"
 [ "$ENABLED" = "1" ] || exit 0
 
+# True if a git hooks directory holds any real (non-.sample) hook
+has_own_hooks() {
+  local hook
+  for hook in "$1"/*; do
+    case "$hook" in *.sample) ;; *) [ -f "$hook" ] && return 0 ;; esac
+  done
+  return 1
+}
+
+# A user-scope install has no install-time question about a repo's git
+# hooks, so offer them the first time an agent session opens in a repo that
+# lacks them. A "no" is remembered in the repo's own git config, never in
+# its tree: offer_git_hooks <repo-root>
+offer_git_hooks() {
+  local root="$1" hooks_path hooks_dir
+  git -C "$root" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  [ "$(git -C "$root" config --get devqual.hooks || true)" = "declined" ] && return 0
+  hooks_path="$(git -C "$root" config --get core.hooksPath || true)"
+  [ "$hooks_path" = "$SCRIPT_DIR/hooks" ] && return 0
+  hooks_dir="$(cd "$root" && cd "$(git rev-parse --git-path hooks)" 2>/dev/null && pwd || true)"
+  if [ -n "$hooks_dir" ] && grep -qs "check.sh" "$hooks_dir/pre-commit"; then
+    return 0
+  fi
+
+  echo "dev-qual: commits and pushes in $root are not quality-gated (no dev-qual git hooks)."
+  if [ -n "$hooks_path" ]; then
+    echo "It runs its own hooks from core.hooksPath=$hooks_path. Offer the user to call dev-qual's gate from them: \`bash $SCRIPT_DIR/check.sh --fast\` in pre-commit, \`bash $SCRIPT_DIR/check.sh\` in pre-push."
+  elif [ -n "$hooks_dir" ] && has_own_hooks "$hooks_dir"; then
+    echo "It has hooks of its own to keep. Offer the user: \`bash $SCRIPT_DIR/setup-hooks.sh --project $root --copy\` (review any hook it would replace first)."
+  else
+    echo "Offer the user: \`bash $SCRIPT_DIR/setup-hooks.sh --project $root\`."
+  fi
+  echo "If they decline, run \`git -C $root config devqual.hooks declined\` so it is not offered again."
+}
+
 case "$EVENT" in
   post-edit)
     # Run the fast gate; on failure, its output must reach stderr with exit
@@ -77,6 +112,7 @@ case "$EVENT" in
     # Non-blocking update check; its stdout becomes Claude Code's
     # SessionStart context, so let it through and never fail the event.
     bash "$SCRIPT_DIR/check-updates.sh" --quiet || true
+    [ "$SCOPE" = "user" ] && offer_git_hooks "$ROOT"
     exit 0
     ;;
   stop)

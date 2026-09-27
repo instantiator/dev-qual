@@ -165,7 +165,9 @@ if [ "$SCOPE" = "project" ]; then
   echo "  $REPO/scripts/check-install.sh --project $PROJECT   (reports what has drifted)"
 else
   echo "  1. Review $STATE_FILE"
-  echo "  Git hooks are per repo: run $REPO/scripts/setup-hooks.sh --project <repo> in each repo you want gated."
+  echo "  Git hooks are per repo. When an agent session opens in a repo without them, the"
+  echo "  agent offers to install them (a \"no\" is remembered per repo). To add them yourself:"
+  echo "  $REPO/scripts/setup-hooks.sh --project <repo>"
   echo ""
   echo "Later, after updating the checkout:"
   echo "  $REPO/scripts/check-install.sh --user   (reports what has drifted)"
