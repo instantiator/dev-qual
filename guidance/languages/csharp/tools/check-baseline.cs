@@ -49,7 +49,8 @@ internal static class CheckBaseline
     private static string ThisFilePath([CallerFilePath] string path = "") => path;
 
     /// <summary>The directory this script lives in, where the baseline files sit too.</summary>
-    private static string ToolsDir { get; } = Path.GetDirectoryName(ThisFilePath())!;
+    private static string ToolsDir { get; } = Path.GetDirectoryName(ThisFilePath())
+        ?? throw new InvalidOperationException("check-baseline: cannot locate its own directory");
 
     /// <summary>Reports whether a directory looks like a dotnet project: a solution or
     /// project file at its top level, or one level down.</summary>

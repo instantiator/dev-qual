@@ -10,43 +10,40 @@ tags: [skill, maintenance, upgrade]
 
 ## When to use
 
-The `dev-qual` submodule has been updated, setup was installed a while
-ago, or something in `.claude/` or the git hooks looks out of date.
+`dev-qual/scripts/check-updates.sh` (or the session-start hook) reports an update, the user asks to update, or something in the installed setup looks out of date.
 
 ## Questions to ask
 
-1. Update the submodule itself first, or only re-align the project with the checkout it already has?
-2. Has the user deliberately customised any of the installed files? (The report will show which; ask before touching those.)
+1. Update now? For a project install, the upgrade moves the submodule pointer, which the user then commits.
+2. Has the user deliberately customised any installed files? The drift report shows which; ask before touching those.
 
 ## Steps
 
-1. Update the checkout, unless the user asked to stay on the current one:
-   `git submodule update --remote dev-qual`
-2. Run `dev-qual/scripts/check-install.sh`. It compares the project against the checkout and reports PASS / FAIL / SKIP per item: the `AGENTS.md` block and its skills routing, `CLAUDE.md`, `.claude/skills/`, `.claude/settings.json`, and the git hooks.
-3. For each FAIL, look at what actually differs before changing anything:
-   - `git -C dev-qual log --oneline <old>..HEAD -- <path>` for what changed upstream,
+1. Run `dev-qual/scripts/upgrade.sh` (`--user` for a user-scope install, `--project <dir>` for another repo). It:
+   - bumps the submodule, or pulls a user-scope clone (fast-forward only);
+   - re-runs `install.sh --from-config`, replaying the choices recorded in `.dev-qual.env` (project scope) or `~/.config/dev-qual/config.env` (user scope);
+   - finishes with `check-install.sh`.
+2. For each FAIL in that report, look at what differs before changing anything:
+   - `git -C dev-qual log --oneline <old>..HEAD -- <path>` for what changed upstream (upgrade.sh prints the old and new SHA);
    - `diff` the project's copy against the checkout's for what the user changed.
-4. Tell the user what each difference is, and which side you propose to keep. Anything that looks like a deliberate local customisation gets kept unless they say otherwise.
-5. Apply the mechanical updates by re-running the installer: `./dev-qual/install.sh` (idempotent — it replaces its own marked block and never clobbers unmarked content).
-6. Merge by hand anything the installer does not own: an edited `CLAUDE.md`, hooks installed with `--copy`, custom entries in `.claude/settings.json`. Take the upstream version and re-apply the user's edits on top; never drop an edit silently.
-7. Re-run `check-install.sh` until everything is PASS or the remaining FAILs are customisations the user chose to keep.
-8. Run `dev-qual/scripts/check.sh` — an updated gate may report things the old one did not.
+3. Tell the user what each difference is and which side you propose to keep. Keep anything that looks like a deliberate customisation unless they say otherwise.
+4. Merge by hand what the installer doesn't own: text outside the `<!-- dev-qual:… -->` markers, hooks installed with `--copy` that the user edited, and custom entries in `.claude/settings.json`. Take the upstream version and re-apply the user's edits on top; never drop an edit silently.
+5. Re-run `dev-qual/scripts/check-install.sh` until everything is PASS, or the remaining FAILs are customisations the user chose to keep.
+6. Run `dev-qual/scripts/check.sh`: an updated gate may report things the old one didn't.
+7. Project scope: remind the user to commit the new submodule pointer.
 
-## Bootstrapping a project that does not have this skill
+## Installs from before the state file
 
-Nothing needs installing first — the installer carries the skill in with it:
-
-```bash
-git submodule update --remote dev-qual && ./dev-qual/install.sh
-```
+An install made before `install.sh` recorded its choices has no `.dev-qual.env`, so `upgrade.sh` stops with "not installed". Update the checkout by hand (`git submodule update --remote dev-qual`), then run `./dev-qual/install.sh` once, interactively. It records the choices, and `upgrade.sh` works from then on.
 
 ## Scripts
 
-- `dev-qual/scripts/check-install.sh` — the drift report.
-- `dev-qual/install.sh` — re-runnable installer for the mechanical parts.
+- `dev-qual/scripts/check-updates.sh`: is an update available? Never blocks; refreshes in the background at most daily.
+- `dev-qual/scripts/upgrade.sh`: update and re-apply.
+- `dev-qual/scripts/check-install.sh`: the drift report.
 
 ## Validate
 
 - `check-install.sh` reports no unexplained differences.
-- Every customisation the user chose to keep is still present in the file.
-- `check.sh` passes, and a test commit still triggers the pre-commit hook.
+- Every customisation the user chose to keep is still present.
+- `check.sh` passes, and a test commit still triggers the pre-commit hook (project scope, if hooks were installed).
