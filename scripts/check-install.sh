@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Reports how a project's installed dev-qual files differ from this
-# checkout — the drift that builds up after `git submodule update`.
+# Reports how a project's (or the user's) installed dev-qual files differ
+# from this checkout — the drift that builds up after `git submodule update`.
 #
 # PASS = matches this checkout. FAIL = differs (upstream moved, or you
 # customised it). SKIP = not installed, so nothing to compare.
 #
-# Usage: check-install.sh [--project <dir>]
+# Usage: check-install.sh [--project <dir> | --user]
 # Exit code: 1 if anything differs, else 0.
 set -euo pipefail
 
@@ -15,32 +15,35 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=lib/common.sh
 . "$SCRIPT_DIR/lib/common.sh"
 
-PROJECT=""
+PROJECT=""; SCOPE="project"
 while [ $# -gt 0 ]; do
   case "$1" in
     --project) PROJECT="${2:?--project needs a directory}"; shift ;;
+    --user) SCOPE="user" ;;
     --help|-h) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
   shift
 done
-# Default to the repo this checkout sits inside, matching install.sh
-[ -n "$PROJECT" ] || PROJECT="$(cd "$REPO/.." && pwd)"
 
-echo "check-install.sh — comparing $PROJECT against $REPO"
+if [ "$SCOPE" = "project" ]; then
+  # Default to the repo this checkout sits inside, matching install.sh
+  [ -n "$PROJECT" ] || PROJECT="$(cd "$REPO/.." && pwd)"
+  AGENTS="$PROJECT/AGENTS.md"
+  CLAUDE_MD="$PROJECT/CLAUDE.md"
+  SKILLS_DIR="$PROJECT/.claude/skills"
+  SETTINGS="$PROJECT/.claude/settings.json"
+  echo "check-install.sh — comparing $PROJECT (project scope) against $REPO"
+else
+  AGENTS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/AGENTS.md"
+  CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+  SKILLS_DIR="$HOME/.claude/skills"
+  SETTINGS="$HOME/.claude/settings.json"
+  echo "check-install.sh — comparing user scope ($HOME) against $REPO"
+fi
 
-# Print the content between a pair of marker patterns:
-# block_between <file> <start-regex> <end-regex>
-block_between() {
-  awk -v s="$2" -v e="$3" '
-    $0 ~ e { inside = 0 }
-    inside { print }
-    $0 ~ s { inside = 1 }
-  ' "$1"
-}
-
-# 1. The AGENTS.md entry block, against whichever tier file it was taken from
-AGENTS="$PROJECT/AGENTS.md"
+# 1. The AGENTS.md tier entry block, against every tier's rendered content
+#    for this scope (we don't record which tier was chosen elsewhere)
 if [ ! -f "$AGENTS" ]; then
   record_result "AGENTS.md" SKIP "not installed — run install.sh"
 elif ! grep -qE '<!-- dev-(qual|environment):start -->' "$AGENTS"; then
@@ -51,7 +54,8 @@ else
   installed="$(block_between "$AGENTS" '<!-- dev-(qual|environment):start -->' '<!-- dev-(qual|environment):end -->')"
   matched=""
   for tier in local remote; do
-    if [ "$installed" = "$(cat "$REPO/agents-files/$tier/AGENTS.md")" ]; then
+    rendered="$(render_entry "$REPO/agents-files/$tier/AGENTS.md" "$SCOPE" "$REPO")"
+    if [ "$installed" = "$rendered" ]; then
       matched="$tier"
     fi
   done
@@ -68,7 +72,12 @@ if [ -f "$AGENTS" ] && grep -qE '<!-- dev-(qual|environment):skills:start -->' "
   missing=""
   while read -r line; do
     name="${line#- [}"; name="${name%%]*}"
-    grep -q "skills/$name/SKILL.md" "$AGENTS" || missing="$missing $name"
+    if [ "$SCOPE" = "user" ]; then
+      expected="$REPO/skills/$name/SKILL.md"
+    else
+      expected="skills/$name/SKILL.md"
+    fi
+    grep -q "$expected" "$AGENTS" || missing="$missing $name"
   done <<EOF
 $(grep '^- \[' "$REPO/skills/index.md")
 EOF
@@ -81,21 +90,25 @@ else
   record_result "AGENTS.md:skills" SKIP "no skills routing block (OpenCode adapter not installed)"
 fi
 
-# 3. CLAUDE.md — copied once by the adapter and never refreshed, so this is
-#    where drift is most likely
-if [ ! -d "$PROJECT/.claude" ]; then
+# 3. CLAUDE.md — compare the marked block against the rendered template
+if [ "$SCOPE" = "project" ] && [ ! -d "$PROJECT/.claude" ]; then
   record_result "CLAUDE.md" SKIP "Claude Code adapter not installed"
-elif [ ! -f "$PROJECT/CLAUDE.md" ]; then
-  record_result "CLAUDE.md" FAIL "missing — copy $REPO/agents-files/remote/CLAUDE.md"
-elif diff -q "$PROJECT/CLAUDE.md" "$REPO/agents-files/remote/CLAUDE.md" >/dev/null 2>&1; then
-  record_result "CLAUDE.md" PASS
+elif [ ! -f "$CLAUDE_MD" ]; then
+  record_result "CLAUDE.md" FAIL "missing — run adapters/claude-code/install.sh"
+elif ! grep -qE '<!-- dev-(qual|environment):start -->' "$CLAUDE_MD"; then
+  record_result "CLAUDE.md" FAIL "no dev-qual block — re-run adapters/claude-code/install.sh"
 else
-  record_result "CLAUDE.md" FAIL "differs — diff against $REPO/agents-files/remote/CLAUDE.md and merge what you want to keep"
+  installed="$(block_between "$CLAUDE_MD" '<!-- dev-(qual|environment):start -->' '<!-- dev-(qual|environment):end -->')"
+  rendered="$(render_entry "$REPO/agents-files/remote/CLAUDE.md" "$SCOPE" "$REPO")"
+  if [ "$installed" = "$rendered" ]; then
+    record_result "CLAUDE.md" PASS
+  else
+    record_result "CLAUDE.md" FAIL "block differs — diff against $REPO/agents-files/remote/CLAUDE.md and merge what you want to keep"
+  fi
 fi
 
 # 4. Skills. Symlinks into this checkout are always current; a real directory
 #    or a broken link is a copy that has stopped tracking upstream.
-SKILLS_DIR="$PROJECT/.claude/skills"
 if [ ! -d "$SKILLS_DIR" ]; then
   record_result "skills" SKIP "Claude Code adapter not installed"
 else
@@ -115,19 +128,19 @@ else
   fi
 fi
 
-# 5. The Claude Code post-edit hook in settings.json
-SETTINGS="$PROJECT/.claude/settings.json"
+# 5. The dev-qual agent hooks in settings.json
 if [ ! -f "$SETTINGS" ]; then
-  record_result "settings.json" SKIP "no .claude/settings.json (post-edit hook is optional)"
-elif grep -q 'check.sh --fast' "$SETTINGS"; then
+  record_result "settings.json" SKIP "no settings.json (agent hooks are optional)"
+elif grep -q 'agent-hook.sh' "$SETTINGS"; then
   record_result "settings.json" PASS
 else
-  record_result "settings.json" FAIL "post-edit hook absent — re-run adapters/claude-code/install.sh to add it"
+  record_result "settings.json" FAIL "agent hooks absent — re-run adapters/claude-code/install.sh to add them"
 fi
 
-# 6. Git hooks. A core.hooksPath install reads this checkout directly and
-#    cannot drift; copied hooks can.
-if ! git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
+# 6. Git hooks (project scope only — hooks are per repo, not per user)
+if [ "$SCOPE" = "user" ]; then
+  : # nothing to check
+elif ! git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
   record_result "git-hooks" SKIP "$PROJECT is not a git repository"
 else
   HOOKS_PATH="$(git -C "$PROJECT" config core.hooksPath || true)"
@@ -151,6 +164,14 @@ else
       record_result "git-hooks" FAIL "copied hooks differ:$differing — re-run setup-hooks.sh --copy, or diff them first if you edited them"
     fi
   fi
+fi
+
+# 7. The state file itself
+STATE_FILE="$(state_file_for "$SCOPE" "$PROJECT")"
+if [ -f "$STATE_FILE" ]; then
+  record_result "state file" PASS
+else
+  record_result "state file" FAIL "run install.sh"
 fi
 
 echo ""
