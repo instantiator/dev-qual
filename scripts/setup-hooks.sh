@@ -27,7 +27,9 @@ if ! git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
 fi
 
 if [ "$COPY" = 1 ]; then
-  GIT_HOOKS="$(git -C "$PROJECT" rev-parse --git-path hooks)"
+  # Absolute: --git-path is relative to the project, not to this script's cwd
+  GIT_HOOKS="$(git -C "$PROJECT" rev-parse --path-format=absolute --git-path hooks)"
+  mkdir -p "$GIT_HOOKS"
   for hook in "$HOOKS_DIR"/*; do
     cp "$hook" "$GIT_HOOKS/$(basename "$hook")"
     chmod +x "$GIT_HOOKS/$(basename "$hook")"

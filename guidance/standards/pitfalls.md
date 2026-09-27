@@ -9,7 +9,7 @@ tags: [standards, pitfalls, review]
 
 Avoid these — they are the most frequent defects in agent-written code:
 
-- **Swallowed exceptions** — empty catch blocks, or catching just to log and continue when the operation actually failed. Handle it or let it propagate.
+- **Swallowed exceptions** — empty catch blocks, or catching just to log and continue when the operation actually failed. Handle it or let it propagate ([error-handling](error-handling.md)).
 - **Narrative comments** — comments that narrate the diff ("added a check for null") or explain the obvious. Comments state intent (see [common](common.md)).
 - **Stale comments** — a function changed but its doc comment didn't. When editing code, re-read its comment.
 - **`TODO` / `LATER` / `qq` without a condition** — every deferred item MUST say WHEN or under what CONDITIONS it should be dealt with. Add the condition (ask the user if unclear), then decide whether to tackle it now ([outstanding-work](../process/outstanding-work.md)).

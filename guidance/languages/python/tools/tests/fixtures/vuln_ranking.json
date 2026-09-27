@@ -1,0 +1,19 @@
+{
+  "dependencies": [
+    {
+      "name": "pkg-a",
+      "version": "1.0.0",
+      "vulns": [{"id": "V1", "fix_versions": [], "aliases": [], "description": "no fix"}]
+    },
+    {
+      "name": "pkg-b",
+      "version": "2.0.0",
+      "vulns": [{"id": "V2", "fix_versions": ["2.1.0"], "aliases": [], "description": "transitive fix"}]
+    },
+    {
+      "name": "pkg-c",
+      "version": "1.0.0",
+      "vulns": [{"id": "V3", "fix_versions": ["1.2.0"], "aliases": [], "description": "direct fix"}]
+    }
+  ]
+}

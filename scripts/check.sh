@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # The quality gate. Detects every stack in the project, then runs:
-#   format check -> lint -> typecheck -> build -> unit tests -> aislop scan
+#   format check -> lint -> typecheck -> lint-baseline adoption -> build
+#   -> unit tests -> aislop scan
+# plus shellcheck, actionlint, and markdownlint wherever those files exist,
 # and prints a PASS/FAIL/SKIP table with a fix-hint per failure.
 # Missing tools SKIP with an install hint; the gate never crashes on absence.
+# A dev-qual checkout nested in the project (a submodule) is not linted.
 #
 # Usage: check.sh [--fast|--comprehensive] [--fix] [--suite <name>] [--project <dir>]
 #   --fast           format + lint + typecheck only (used by the pre-commit hook)
@@ -14,6 +17,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LANG_TOOLS="$SCRIPT_DIR/../guidance/languages"
 # shellcheck source-path=SCRIPTDIR
 # shellcheck source=lib/common.sh
 . "$SCRIPT_DIR/lib/common.sh"
@@ -37,6 +41,13 @@ if [ "$FAST" = 1 ] && [ "$COMPREHENSIVE" = 1 ]; then
 fi
 
 cd "$PROJECT"
+# This dev-qual checkout, relative to the project when it sits inside it (a
+# submodule): its files are dev-qual's to lint, not the project's. When the
+# checkout IS the project, or lies outside it, SELF_REL stays empty and the
+# resulting ".//*" pattern matches nothing.
+CHECKOUT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SELF_REL=""
+case "$CHECKOUT" in "$PWD"/*) SELF_REL="${CHECKOUT#"$PWD"/}" ;; esac
 STACKS="$(detect_stacks .)"
 MODE="full"
 if [ "$FAST" = 1 ]; then MODE="fast"; fi
@@ -65,7 +76,25 @@ list_files() {
   find . -name "$1" \
     -not -path './node_modules/*' -not -path './.git/*' \
     -not -path './.venv/*' -not -path './venv/*' \
-    -not -path './bin/*' -not -path './obj/*'
+    -not -path './bin/*' -not -path './obj/*' \
+    -not -path "./$SELF_REL/*"
+}
+
+# Report whether the project extends a language's dev-qual lint baseline:
+# check_baseline <label> <required-cmd> <checker...>. Not adopting it is a
+# SKIP with the exact lines to add, never a FAIL, so existing projects pass.
+check_baseline() {
+  local label="$1" cmd="$2" out rc=0
+  shift 2
+  if ! has_cmd "$cmd"; then return 0; fi
+  out="$("$@" --project . 2>&1)" || rc=$?
+  case "$rc" in
+    0) record_result "${STAGE_PREFIX}baseline" PASS ;;
+    1) echo ""; echo "$out"
+       record_result "${STAGE_PREFIX}baseline" SKIP "optional: extend dev-qual's $label baseline (lines above)" ;;
+    *) echo ""; echo "$out"
+       record_result "${STAGE_PREFIX}baseline" FAIL "the $label baseline checker failed (output above)" ;;
+  esac
 }
 
 # True if list_files would match anything
@@ -90,7 +119,7 @@ check_node() {
   elif npm_has_script . lint; then
     run_stage "${STAGE_PREFIX}lint" "fix reported lint problems" npm run lint
   else
-    record_result "${STAGE_PREFIX}lint" SKIP "add a lint script (see guidance/languages/typescript.md)"
+    record_result "${STAGE_PREFIX}lint" SKIP "add a lint script (see guidance/languages/typescript/typescript.md)"
   fi
   # Typecheck
   if npm_has_script . typecheck; then
@@ -100,6 +129,7 @@ check_node() {
   else
     record_result "${STAGE_PREFIX}typecheck" SKIP "no typecheck script or tsconfig.json"
   fi
+  check_baseline eslint node node "$LANG_TOOLS/typescript/tools/check-baseline.mjs"
   [ "$FAST" = 1 ] && return 0
   if npm_has_script . build; then
     run_stage "${STAGE_PREFIX}build" "fix build errors/warnings" npm run build
@@ -123,6 +153,7 @@ check_dotnet() {
     run_stage "${STAGE_PREFIX}format-fix" "review formatter output" dotnet format
   fi
   run_stage "${STAGE_PREFIX}format" "run: dotnet format" dotnet format --verify-no-changes
+  check_baseline msbuild dotnet dotnet run --file "$LANG_TOOLS/csharp/tools/check-baseline.cs" --
   [ "$FAST" = 1 ] && return 0
   # Analyzers run within the build, so build doubles as lint
   run_stage "${STAGE_PREFIX}build" "fix build errors/warnings" dotnet build --nologo
@@ -149,8 +180,9 @@ check_python() {
     || [ -f mypy.ini ] || [ -f .mypy.ini ]; then
     run_stage "${STAGE_PREFIX}typecheck" "fix reported type errors" mypy .
   else
-    record_result "${STAGE_PREFIX}typecheck" SKIP "add [tool.mypy] to pyproject.toml (see guidance/languages/python.md)"
+    record_result "${STAGE_PREFIX}typecheck" SKIP "add [tool.mypy] to pyproject.toml (see guidance/languages/python/python.md)"
   fi
+  check_baseline ruff python3 python3 "$LANG_TOOLS/python/tools/check_baseline.py"
   [ "$FAST" = 1 ] && return 0
   if ! has_cmd pytest; then
     record_result "${STAGE_PREFIX}unit-tests" SKIP "install pytest (pip install pytest)"
@@ -163,7 +195,12 @@ check_python() {
 }
 
 audit_node() {
-  run_stage "audit:node" "run: npm audit fix (see guidance/standards/dependencies.md)" \
+  # npm audit reads the lockfile; without one there is nothing to audit
+  if [ ! -f package-lock.json ] && [ ! -f npm-shrinkwrap.json ]; then
+    record_result "audit:node" SKIP "no package-lock.json to audit: commit your lockfile (npm i --package-lock-only)"
+    return 0
+  fi
+  run_stage "audit:node" "run: $SCRIPT_DIR/vuln-report.sh for ranked next steps" \
     npm audit --audit-level=high
 }
 
@@ -176,7 +213,7 @@ audit_dotnet() {
   out="$(dotnet list package --vulnerable 2>&1)" || true
   echo "$out"
   if echo "$out" | grep -q 'has the following vulnerable packages'; then
-    record_result "audit:dotnet" FAIL "update the vulnerable packages listed above"
+    record_result "audit:dotnet" FAIL "run: $SCRIPT_DIR/vuln-report.sh for ranked next steps"
   else
     record_result "audit:dotnet" PASS
   fi
@@ -184,7 +221,7 @@ audit_dotnet() {
 
 audit_python() {
   if has_cmd pip-audit; then
-    run_stage "audit:python" "update the vulnerable packages listed above" pip-audit
+    run_stage "audit:python" "run: $SCRIPT_DIR/vuln-report.sh for ranked next steps" pip-audit
   else
     record_result "audit:python" SKIP "install pip-audit (pip install pip-audit)"
   fi
@@ -216,6 +253,24 @@ if has_files '*.sh'; then
   fi
 fi
 
+WORKFLOW_DIRS=""
+for d in .github/workflows .gitea/workflows; do
+  [ -d "$d" ] && WORKFLOW_DIRS="$WORKFLOW_DIRS $d"
+done
+if [ -n "$WORKFLOW_DIRS" ]; then
+  if has_cmd actionlint; then
+    # List every workflow file explicitly: given any args, actionlint stops
+    # auto-discovering .github/workflows, and it never looks in .gitea/
+    # shellcheck disable=SC2086
+    WORKFLOW_ARGS="$(find $WORKFLOW_DIRS -name '*.yml' -o -name '*.yaml')"
+    # Word-splitting the collected args is intended here
+    # shellcheck disable=SC2086
+    run_stage "actionlint" "fix actionlint findings (see guidance/ci/github-actions.md)" actionlint $WORKFLOW_ARGS
+  else
+    record_result "actionlint" SKIP "install actionlint (mac: brew install actionlint)"
+  fi
+fi
+
 if has_files '*.md'; then
   if has_cmd markdownlint; then
     # The project's own config wins. Where it has none, use the config shipped
@@ -240,9 +295,9 @@ if [ "$FAST" = 0 ]; then
     # With a project config, use the ci command (score threshold, ratchetable);
     # bare scan exits non-zero on any finding, including warnings-only.
     if [ -f .aislop/config.yml ]; then
-      run_stage "aislop" "fix reported slop (see guidance/standards/pitfalls.md)" npx --yes aislop@latest ci
+      run_stage "aislop" "fix reported slop (see guidance/standards/pitfalls.md); preview mechanical fixes: npx aislop fix --safe --dry-run" npx --yes aislop@latest ci
     else
-      run_stage "aislop" "fix reported slop (see guidance/standards/pitfalls.md)" npx --yes aislop@latest scan
+      run_stage "aislop" "fix reported slop (see guidance/standards/pitfalls.md); preview mechanical fixes: npx aislop fix --safe --dry-run" npx --yes aislop@latest scan
     fi
   else
     record_result "aislop" SKIP "optional: npm i -D aislop, or npx aislop scan"

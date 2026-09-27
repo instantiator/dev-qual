@@ -13,5 +13,5 @@ tags: [aspnet, dotnet, backend, framework]
 - Validate request models at the boundary (data annotations or FluentValidation); return `ProblemDetails` for errors rather than ad-hoc shapes.
 - Use `ILogger<T>` structured logging; no `Console.WriteLine` in app code.
 - Expose health checks via `MapHealthChecks("/healthz")`.
-- General C# rules (nullable, warnings-as-errors, xUnit): [csharp](../languages/csharp.md).
+- General C# rules (nullable, warnings-as-errors, xUnit): [csharp](../languages/csharp/csharp.md).
 - Integration-test with `WebApplicationFactory<Program>`; unit-test services directly.

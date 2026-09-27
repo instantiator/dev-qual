@@ -52,6 +52,8 @@ whole task is misallocated.
 
 ## In planning mode
 
+The [plan-work](../../skills/plan-work/SKILL.md) skill sets the plan's structure; this section covers the model choice within it.
+
 - Produce a table of the tasks a sub-agent could take, with the tier assigned to each and one line of reasoning.
 - Where a task would suit a cheaper tier *if it were more specific*, add the specificity — concrete steps, exact file lists, exact changes — rather than escalating the model.
 

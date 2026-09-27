@@ -1,0 +1,31 @@
+<Project>
+  <!--
+    dev-qual's C# baseline: turns the rules in
+    guidance/languages/csharp/csharp.md into enforced, zero-warning build
+    settings (nullable reference types, warnings-as-errors, the
+    latest-recommended Roslyn analyzers, code-style enforcement at build
+    time, and required XML doc comments via GenerateDocumentationFile).
+
+    To adopt, import this file from the project's own Directory.Build.props
+    (create one at the solution/repo root if it doesn't exist):
+
+      <Import Project="$(MSBuildThisFileDirectory)dev-qual/guidance/languages/csharp/tools/Baseline.props" />
+
+    Also import Baseline.targets from Directory.Build.targets (see that
+    file's header) — it carries the one setting that must be evaluated
+    after the project's own package references, so it cannot live here.
+
+    Adjust the path to wherever dev-qual is checked out relative to the
+    importing file. Verify adoption with:
+
+      tools/check-baseline.cs (see csharp.md for the command), passing the project dir with the
+      project option; see its help for the exact flag.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

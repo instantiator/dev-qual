@@ -1,0 +1,47 @@
+# dev-qual ruff baseline.
+#
+# Adopt in pyproject.toml:
+#
+#   [tool.ruff]
+#   extend = "dev-qual/guidance/languages/python/tools/ruff-baseline.toml"
+#
+# or in ruff.toml / .ruff.toml:
+#
+#   extend = "dev-qual/guidance/languages/python/tools/ruff-baseline.toml"
+#
+# Adjust the path to wherever dev-qual is checked out relative to the project.
+#
+# CAVEAT: `extend` merges the base config into the project's, but rule
+# *selection* only merges one way. If the project sets its own top-level
+# `lint.select`, that REPLACES the base's `lint.select` entirely (the base's
+# `select` is discarded, though its `ignore` still merges). This baseline
+# therefore puts its rules under `lint.extend-select` instead of
+# `lint.select` — `extend-select` always adds to whatever the project
+# selects, regardless of whether the project also sets `select`. If a
+# project needs to select rules of its own, use `lint.select` or
+# `lint.extend-select` freely; either way, this baseline's rules keep
+# applying. Verified against https://docs.astral.sh/ruff/settings/#extend.
+
+[lint]
+extend-select = [
+  "ANN",    # missing/incomplete type annotations
+  "ANN401", # disallow typing.Any
+  "BLE001", # blind except (`except Exception:`)
+  "S110",   # try-except-pass
+  "E722",   # bare except
+  "B006",   # mutable default argument
+  "PTH",    # use pathlib instead of os.path
+  "C901",   # function too complex
+  "PLR0913", # too many arguments
+  "UP",     # pyupgrade: modernise syntax for the target Python version
+]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-args = 4
+
+[lint.per-file-ignores]
+"**/tests/**" = ["ANN", "PLR0913"]
+"**/test_*.py" = ["ANN", "PLR0913"]

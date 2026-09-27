@@ -23,4 +23,9 @@ tags: [typescript, language]
 | Slop scan | `npx aislop scan` |
 
 - Expose each as an npm script (`lint`, `lint:check`, `format`, `typecheck`, `test`) so `check.sh` and CI can find them.
-- For TypeScript as a scripting language (not an app), see [node-scripting](node-scripting.md).
+- For TypeScript as a scripting language (not an app), see [node-scripting](../node-scripting/node-scripting.md).
+
+## dev-qual tools
+
+- `tools/eslint-baseline.mjs` enforces the rules above as zero-warning errors; spread it **last** into the project's own flat `eslint.config.mjs`, so nothing after it can weaken it (see the file's header). Check adoption with `tools/check-baseline.mjs [--project <dir>]`.
+- `tools/vuln-report.mjs [--project <dir>]` turns `npm audit --json` into a ranked, actionable report (the deps-audit skill calls it during audits).

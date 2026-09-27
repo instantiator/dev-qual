@@ -7,7 +7,7 @@ tags: [infra, aws, cdk, typescript]
 
 # AWS CDK
 
-- Use TypeScript CDK unless the project's language dictates otherwise; usual TS rules apply ([typescript](../languages/typescript.md)).
+- Use TypeScript CDK unless the project's language dictates otherwise; usual TS rules apply ([typescript](../languages/typescript/typescript.md)).
 - Prefer L2 constructs; drop to L1 (`Cfn*`) only when the L2 doesn't expose what you need — comment why.
 - One stack per deployable unit; share values between stacks via props, not `Fn.importValue` string coupling.
 - Grant permissions with the construct helpers (`bucket.grantRead(fn)`) rather than hand-written policies.

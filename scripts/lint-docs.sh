@@ -41,6 +41,7 @@ index_for() {
   case "$rel" in
     guidance/index.md|skills/index.md) echo "" ;;
     guidance/*/index.md) echo "$REPO/guidance/index.md" ;;
+    guidance/languages/*/*.md) echo "$REPO/guidance/languages/index.md" ;;
     skills/*/SKILL.md) echo "$REPO/skills/index.md" ;;
     *) echo "$(dirname "$file")/index.md" ;;
   esac
@@ -69,7 +70,7 @@ for d in "$REPO/guidance" "$REPO/skills"; do
   [ -d "$d" ] && SCAN_DIRS="$SCAN_DIRS $d"
 done
 # shellcheck disable=SC2086
-DOCS="$(find $SCAN_DIRS -name '*.md' | sort)"
+DOCS="$(find $SCAN_DIRS -name '*.md' -not -path '*/tools/*' -not -path '*/templates/*' | sort)"
 
 for file in $DOCS; do
   lines="$(wc -l <"$file" | tr -d ' ')"

@@ -1,0 +1,63 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "lodash": {
+      "name": "lodash",
+      "severity": "high",
+      "isDirect": false,
+      "via": ["prototype-pollution"],
+      "range": ">=4.0.0 <4.17.21",
+      "fixAvailable": true
+    },
+    "minimist": {
+      "name": "minimist",
+      "severity": "critical",
+      "isDirect": true,
+      "via": ["prototype-pollution"],
+      "range": "<1.2.6",
+      "fixAvailable": {
+        "name": "minimist",
+        "version": "1.2.6",
+        "isSemVerMajor": false
+      }
+    },
+    "old-thing": {
+      "name": "old-thing",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["regexp-dos"],
+      "range": "*",
+      "fixAvailable": false
+    },
+    "big-major": {
+      "name": "big-major",
+      "severity": "high",
+      "isDirect": true,
+      "via": ["some-cve"],
+      "range": "<2.0.0",
+      "fixAvailable": {
+        "name": "big-major",
+        "version": "3.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "trans-mod": {
+      "name": "trans-mod",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["some-cve"],
+      "range": "<1.0.0",
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 2,
+      "high": 2,
+      "critical": 1,
+      "total": 5
+    }
+  }
+}

@@ -10,6 +10,7 @@ tags: [process, planning, security]
 ## Working style
 
 - Preparing a plan is collaborative: present options to the user and discuss merits and drawbacks before committing to libraries, approaches, data structures, or key business logic.
+- For anything bigger than one unit of work, plan it with the [plan-work](../../skills/plan-work/SKILL.md) skill: staged, with a tier, a brief, tests, and a quality gate for each stage.
 - Determine whether you have actually been asked to change code. If not, don't — even while exploring. Ask permission if you need to make changes and haven't been explicitly authorised.
 
 ## Model allocation
@@ -28,5 +29,4 @@ tags: [process, planning, security]
 ## Security
 
 - Offer security advice for the request before starting; if there is a safer way to implement a feature, offer it.
-- Include advice on validating inputs and configuring access to features and services.
-- Never store passwords, API keys, or other secrets in the code base.
+- Follow [security](../standards/security.md) — including: never store passwords, API keys, or other secrets in the code base.

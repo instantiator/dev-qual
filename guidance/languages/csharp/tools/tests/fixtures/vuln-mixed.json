@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "sources": ["https://api.nuget.org/v3/index.json"],
+  "projects": [
+    {
+      "path": "/repo/ProjectA/ProjectA.csproj",
+      "frameworks": [
+        {
+          "framework": "net10.0",
+          "topLevelPackages": [
+            {
+              "id": "Minimist.Net",
+              "requestedVersion": "1.0.0",
+              "resolvedVersion": "1.0.0",
+              "vulnerabilities": [
+                { "severity": "Critical", "advisoryurl": "https://example.com/advisories/minimist" }
+              ]
+            },
+            {
+              "id": "BigMajor",
+              "requestedVersion": "1.0.0",
+              "resolvedVersion": "1.0.0",
+              "vulnerabilities": [
+                { "severity": "High", "advisoryurl": "https://example.com/advisories/bigmajor" }
+              ]
+            },
+            {
+              "id": "OldThing",
+              "requestedVersion": "2.0.0",
+              "resolvedVersion": "2.0.0",
+              "vulnerabilities": [
+                { "severity": "Moderate", "advisoryurl": "https://example.com/advisories/oldthing" }
+              ]
+            }
+          ],
+          "transitivePackages": [
+            {
+              "id": "Lodash.Net",
+              "resolvedVersion": "4.0.0",
+              "vulnerabilities": [
+                { "severity": "High", "advisoryurl": "https://example.com/advisories/lodash" }
+              ]
+            },
+            {
+              "id": "TransMod",
+              "resolvedVersion": "1.2.0",
+              "vulnerabilities": [
+                { "severity": "Moderate", "advisoryurl": "https://example.com/advisories/transmod" }
+              ]
+            },
+            {
+              "id": "DupPkg",
+              "resolvedVersion": "3.0.0",
+              "vulnerabilities": [
+                { "severity": "High", "advisoryurl": "https://example.com/advisories/duppkg" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/repo/ProjectB/ProjectB.csproj",
+      "frameworks": [
+        {
+          "framework": "net10.0",
+          "transitivePackages": [
+            {
+              "id": "DupPkg",
+              "resolvedVersion": "3.0.0",
+              "vulnerabilities": [
+                { "severity": "High", "advisoryurl": "https://example.com/advisories/duppkg" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

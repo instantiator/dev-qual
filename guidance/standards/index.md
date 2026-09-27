@@ -14,4 +14,6 @@ tags: [standards, index]
 - [testing](testing.md) — How test suites are organised, named, and launched. Read when writing tests or setting up testing.
 - [dependencies](dependencies.md) — How to choose, add, and update dependencies safely. Read before adding or updating any dependency or framework.
 - [databases](databases.md) — Transactions, migrations, and safe queries. Read when writing code that reads from or writes to a database.
+- [security](security.md) — Concrete security rules for input handling, injection, auth, secrets, and transport. Read before handling untrusted input, secrets, or access control.
+- [error-handling](error-handling.md) — Rules for failing fast, propagating with context, retries, cleanup, and structured logging. Read when writing code that can fail or that logs.
 - [pitfalls](pitfalls.md) — Mistakes coding agents make repeatedly. Read during code review, or when check.sh or aislop report problems.

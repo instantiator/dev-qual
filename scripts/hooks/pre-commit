@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Git pre-commit hook. Two stages, in this order:
-#   1. the fast quality gate (format + lint + typecheck)
+#   1. the fast quality gate (format + lint + typecheck), run on the staged
+#      snapshot: exactly what will be committed, nothing unstaged or untracked
 #   2. the project's own file-modifying steps, re-staged into the commit
 # Installed by setup-hooks.sh. Kept fast on purpose, so nobody disables it.
 set -euo pipefail
@@ -18,8 +19,19 @@ if [ -z "$CHECK" ]; then
   exit 0
 fi
 
-# 1. Check first: no point regenerating anything for a commit that will fail
-bash "$CHECK" --fast --project "$TOP"
+# 1. Check first: no point regenerating anything for a commit that will fail.
+#    The check runs on an export of the index, so unstaged edits (or another
+#    agent's half-written file) can neither block this commit nor hide a
+#    problem in what is staged. The working tree is never touched.
+SNAPSHOT="$(mktemp -d "${TMPDIR:-/tmp}/dev-qual-precommit.XXXXXX")"
+trap 'rm -rf "$SNAPSHOT"' EXIT
+git -C "$TOP" checkout-index --all --prefix="$SNAPSHOT/"
+# Installed tooling is untracked, so link it in for lint/typecheck scripts.
+# ponytail: top-level dependency dirs only; nested ones (monorepo packages) are not linked
+for dep in node_modules .venv venv; do
+  if [ -e "$TOP/$dep" ]; then ln -s "$TOP/$dep" "$SNAPSHOT/$dep"; fi
+done
+bash "$CHECK" --fast --project "$SNAPSHOT"
 
 # 2. Steps that rewrite files — formatting, generated docs, licence lists.
 #    The project owns this script; with no script there is nothing to do.
