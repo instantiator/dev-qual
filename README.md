@@ -72,13 +72,28 @@ Agents check for updates at the start of every session (without blocking or goin
 
 `upgrade.sh` updates the checkout, replays your recorded install, and runs `scripts/check-install.sh`, which reports anything in your setup that differs from the checkout — an edited block, copied hooks, a skill that is no longer a symlink — so you can merge rather than overwrite. The `update-latest` skill walks an agent through it.
 
-Installed before the rename, as `dev-environment`? Move the submodule and re-run the installer, which replaces the old marker block rather than duplicating it:
+### Upgrading from an earlier version
 
-```bash
-git mv dev-environment dev-qual
-git submodule set-url dev-qual https://github.com/instantiator/dev-qual.git
-./dev-qual/install.sh
-```
+Installs from before `install.sh` recorded its choices have no `.dev-qual.env`, so `upgrade.sh` stops with "not installed". Upgrade once by hand; after that, `upgrade.sh` works.
+
+1. Update the checkout: `git submodule update --remote dev-qual`.
+
+   If it's still installed under its old name, `dev-environment`, move it first. The installer replaces the old marker blocks rather than duplicating them.
+
+   ```bash
+   git mv dev-environment dev-qual
+   git submodule set-url dev-qual https://github.com/instantiator/dev-qual.git
+   git submodule update --remote dev-qual
+   ```
+
+2. Re-run the installer once, interactively: `./dev-qual/install.sh`. Choose the same tier and platforms as before. It:
+   - records your choices in `.dev-qual.env`;
+   - refreshes the `AGENTS.md` block;
+   - moves `CLAUDE.md` into a marked block. An unedited old copy is replaced cleanly. If you had edited it, the block is appended with a NOTE: delete the old copied text so the instructions don't appear twice;
+   - replaces the old post-edit hook in `.claude/settings.json` with the three agent hooks, keeping hooks of your own.
+3. Git hooks installed the default way (`core.hooksPath`) are already current. If you installed them with `--copy`, re-run `./dev-qual/scripts/setup-hooks.sh --copy` (compare first if you edited them).
+4. Run `./dev-qual/scripts/check-install.sh`: everything should PASS.
+5. Commit the submodule pointer, `.dev-qual.env`, `AGENTS.md`, `CLAUDE.md`, and `.claude/settings.json` if you track it. Teammates then run `./dev-qual/install.sh --from-config` instead of answering the questions.
 
 ## Enable and disable
 
