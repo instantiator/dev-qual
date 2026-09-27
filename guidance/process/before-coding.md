@@ -29,5 +29,4 @@ tags: [process, planning, security]
 ## Security
 
 - Offer security advice for the request before starting; if there is a safer way to implement a feature, offer it.
-- Include advice on validating inputs and configuring access to features and services.
-- Never store passwords, API keys, or other secrets in the code base.
+- Follow [security](../standards/security.md) — including: never store passwords, API keys, or other secrets in the code base.
