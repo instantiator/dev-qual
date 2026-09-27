@@ -208,6 +208,16 @@ case ",$PLATFORMS," in
   *) record_result "pi" SKIP "pi not in PLATFORMS" ;;
 esac
 
+# 7b. The .prettierignore submodules block, against the project's submodules now
+if [ "$SCOPE" = "project" ] && uses_prettier "$PROJECT"; then
+  installed="$(block_between "$PROJECT/.prettierignore" '<!-- dev-qual:submodules:start -->' '<!-- dev-qual:submodules:end -->' 2>/dev/null || true)"
+  if [ "$installed" = "$(ignored_paths "$PROJECT" "$REPO")" ]; then
+    record_result ".prettierignore" PASS
+  else
+    record_result ".prettierignore" FAIL "submodules block is missing or stale — re-run install.sh --from-config"
+  fi
+fi
+
 # 8. The state file itself
 if [ -f "$STATE_FILE" ]; then
   record_result "state file" PASS

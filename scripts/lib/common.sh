@@ -69,13 +69,19 @@ record_result() {
   RESULT_HINTS[${#RESULT_HINTS[@]}]="${3:-}"
 }
 
-# Print the content between a pair of marker patterns:
+# Print the content between a pair of marker patterns, without the blank lines
+# at its edges (merge_block's padding, or a formatter's):
 # block_between <file> <start-regex> <end-regex>
 block_between() {
   awk -v s="$2" -v e="$3" '
     $0 ~ e { inside = 0 }
-    inside { print }
+    inside { line[++n] = $0 }
     $0 ~ s { inside = 1 }
+    END {
+      first = 1; while (first <= n && line[first] ~ /^[[:space:]]*$/) first++
+      while (n >= first && line[n] ~ /^[[:space:]]*$/) n--
+      for (i = first; i <= n; i++) print line[i]
+    }
   ' "$1"
 }
 
@@ -83,16 +89,25 @@ block_between() {
 # same marker (or the pre-rename "dev-environment" variant of it) in place
 # — so a file holding several different marker blocks keeps their order
 # stable across re-runs — or appending one if the marker is new: merge_block
-# <target> <marker> <content-file>. Creates the target's parent directory.
+# <target> <marker> <content-file> [comment-prefix]. The prefix (e.g. "#")
+# goes before each marker line, for files where HTML comments aren't
+# comments. Without one the file is Markdown, so the content is padded with
+# blank lines, as Prettier formats it. Creates the target's parent directory.
 # If the target already exists with unrelated content (no dev-qual marker
 # of any kind), the block is appended and a NOTE is printed so the merge
 # gets reviewed.
 merge_block() {
-  local target="$1" marker="$2" source="$3" tmp tmp2 legacy newblock placeholder
+  local target="$1" marker="$2" source="$3" prefix="${4:+$4 }" tmp tmp2 legacy newblock placeholder
   mkdir -p "$(dirname "$target")"
   legacy="${marker/dev-qual/dev-environment}"
   newblock="$(mktemp)"
-  { echo "<!-- $marker:start -->"; cat "$source"; echo "<!-- $marker:end -->"; } >"$newblock"
+  {
+    echo "$prefix<!-- $marker:start -->"
+    [ -z "$prefix" ] && echo
+    cat "$source"
+    [ -z "$prefix" ] && echo
+    echo "$prefix<!-- $marker:end -->"
+  } >"$newblock"
 
   if [ -f "$target" ] && grep -qE "<!-- ($marker|$legacy):start -->" "$target"; then
     # Replace the block in place: swap it for a placeholder line, then
@@ -125,6 +140,26 @@ merge_block() {
   fi
   rm -f "$newblock"
   echo "Merged into $target"
+}
+
+# Print the paths inside a project that belong to other repositories, one per
+# line: every submodule, plus the dev-qual checkout when it sits inside the
+# project without being one. Their files are linted by their own repos, not
+# the project's: ignored_paths <project> <checkout-abs>
+ignored_paths() {
+  local project checkout="$2"
+  project="$(cd "$1" && pwd)"
+  {
+    if [ -f "$project/.gitmodules" ]; then
+      git config --file "$project/.gitmodules" --get-regexp '\.path$' | cut -d' ' -f2- || true
+    fi
+    case "$checkout" in "$project"/*) echo "${checkout#"$project"/}" ;; esac
+  } | sort -u
+}
+
+# True if the project formats with Prettier (a dependency or an ignore file)
+uses_prettier() {
+  [ -f "$1/.prettierignore" ] || grep -q '"prettier"' "$1/package.json" 2>/dev/null
 }
 
 # Delete a marked block (current and pre-rename dev-environment variants):

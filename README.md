@@ -39,7 +39,7 @@ git submodule add https://github.com/instantiator/dev-qual
 ./dev-qual/install.sh
 ```
 
-This writes into the repo: AGENTS.md and CLAUDE.md blocks, `.claude/` skills and hooks, and `.dev-qual.env`, which records your choices. Commit `.dev-qual.env` so teammates can run `./dev-qual/install.sh --from-config`. The installer also offers the git hooks.
+This writes into the repo: AGENTS.md and CLAUDE.md blocks, `.claude/` skills and hooks, and `.dev-qual.env`, which records your choices. If the project uses Prettier, it also adds a block to `.prettierignore` listing every submodule, dev-qual included: each is its own repo's to lint. `check.sh` skips submodules for the linters it runs itself, and upgrades keep the block in step as submodules come and go. Commit `.dev-qual.env` so teammates can run `./dev-qual/install.sh --from-config`. The installer also offers the git hooks.
 
 ### For all your repositories (user scope)
 
@@ -91,9 +91,10 @@ Installs from before `install.sh` recorded its choices have no `.dev-qual.env`, 
    - refreshes the `AGENTS.md` block;
    - moves `CLAUDE.md` into a marked block. An unedited old copy is replaced cleanly. If you had edited it, the block is appended with a NOTE: delete the old copied text so the instructions don't appear twice;
    - replaces the old post-edit hook in `.claude/settings.json` with the three agent hooks, keeping hooks of your own.
+   - adds the submodules block to `.prettierignore` if you use Prettier. Delete any `dev-environment` line of your own there: the submodule is now `dev-qual`, and the block covers it.
 3. Git hooks installed the default way (`core.hooksPath`) are already current. If you installed them with `--copy`, re-run `./dev-qual/scripts/setup-hooks.sh --copy` (compare first if you edited them).
 4. Run `./dev-qual/scripts/check-install.sh`: everything should PASS.
-5. Commit the submodule pointer, `.dev-qual.env`, `AGENTS.md`, `CLAUDE.md`, and `.claude/settings.json` if you track it. Teammates then run `./dev-qual/install.sh --from-config` instead of answering the questions.
+5. Commit the submodule pointer, `.dev-qual.env`, `AGENTS.md`, `CLAUDE.md`, `.prettierignore`, and `.claude/settings.json` if you track it. Teammates then run `./dev-qual/install.sh --from-config` instead of answering the questions.
 
 ## Enable and disable
 
