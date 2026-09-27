@@ -63,6 +63,7 @@ add_hooks() {
     const fs = require("fs");
     const [settingsPath, cmdBase, scope] = process.argv.slice(1);
     const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    const before = JSON.stringify(settings);
     settings.hooks = settings.hooks || {};
     const isOurs = (h) => typeof h.command === "string" && (
       h.command.includes("agent-hook.sh") ||
@@ -83,8 +84,13 @@ add_hooks() {
         : { hooks: [{ type: "command", command }] };
       settings.hooks[event] = kept.concat([entry]);
     }
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
-    console.log("Merged dev-qual agent hooks into " + settingsPath);
+    // Rewrite only on a real change, keeping the project formatter'"'"'s layout
+    if (JSON.stringify(settings) === before) {
+      console.log("dev-qual agent hooks already current in " + settingsPath);
+    } else {
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+      console.log("Merged dev-qual agent hooks into " + settingsPath);
+    }
   ' "$settings" "$CMD_BASE" "$SCOPE"
 }
 

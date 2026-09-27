@@ -69,13 +69,19 @@ record_result() {
   RESULT_HINTS[${#RESULT_HINTS[@]}]="${3:-}"
 }
 
-# Print the content between a pair of marker patterns:
+# Print the content between a pair of marker patterns, without the blank lines
+# at its edges (merge_block's padding, or a formatter's):
 # block_between <file> <start-regex> <end-regex>
 block_between() {
   awk -v s="$2" -v e="$3" '
     $0 ~ e { inside = 0 }
-    inside { print }
+    inside { line[++n] = $0 }
     $0 ~ s { inside = 1 }
+    END {
+      first = 1; while (first <= n && line[first] ~ /^[[:space:]]*$/) first++
+      while (n >= first && line[n] ~ /^[[:space:]]*$/) n--
+      for (i = first; i <= n; i++) print line[i]
+    }
   ' "$1"
 }
 
@@ -85,7 +91,8 @@ block_between() {
 # stable across re-runs — or appending one if the marker is new: merge_block
 # <target> <marker> <content-file> [comment-prefix]. The prefix (e.g. "#")
 # goes before each marker line, for files where HTML comments aren't
-# comments. Creates the target's parent directory.
+# comments. Without one the file is Markdown, so the content is padded with
+# blank lines, as Prettier formats it. Creates the target's parent directory.
 # If the target already exists with unrelated content (no dev-qual marker
 # of any kind), the block is appended and a NOTE is printed so the merge
 # gets reviewed.
@@ -94,7 +101,13 @@ merge_block() {
   mkdir -p "$(dirname "$target")"
   legacy="${marker/dev-qual/dev-environment}"
   newblock="$(mktemp)"
-  { echo "$prefix<!-- $marker:start -->"; cat "$source"; echo "$prefix<!-- $marker:end -->"; } >"$newblock"
+  {
+    echo "$prefix<!-- $marker:start -->"
+    [ -z "$prefix" ] && echo
+    cat "$source"
+    [ -z "$prefix" ] && echo
+    echo "$prefix<!-- $marker:end -->"
+  } >"$newblock"
 
   if [ -f "$target" ] && grep -qE "<!-- ($marker|$legacy):start -->" "$target"; then
     # Replace the block in place: swap it for a placeholder line, then

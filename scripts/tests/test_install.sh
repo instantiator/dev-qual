@@ -221,4 +221,19 @@ assert_contains "$OUT11" "FAIL .prettierignore" "check-install flags a stale blo
 bash "$PROJ11/dev-qual/install.sh" --project "$PROJ11" --from-config >/dev/null
 assert_contains "$(cat "$PROJ11/.prettierignore")" "vendor/b" "re-install picks up the new submodule"
 
+# --- 12. installer output is stable under a formatter: Markdown blocks are
+#         padded as Prettier pads them, an unpadded (older) block still
+#         compares as current, and a re-install leaves an already-current
+#         settings.json byte-for-byte alone ---
+PROJ12="$(mk_tmp_project)"
+bash "$PROJ12/dev-qual/install.sh" --project "$PROJ12" --yes --tier local --platforms claude --hooks no >/dev/null
+assert_eq "<!-- dev-qual:start -->|" "$(grep -A1 'dev-qual:start -->' "$PROJ12/CLAUDE.md" | paste -sd'|' -)" "blank line follows the start marker"
+sed -i.bak '/dev-qual:start -->/{n;d;}' "$PROJ12/CLAUDE.md"
+OUT12="$(bash "$PROJ12/dev-qual/scripts/check-install.sh" --project "$PROJ12" 2>&1 || true)"
+assert_contains "$OUT12" "PASS CLAUDE.md" "an unpadded block still compares as current"
+node -e 'const f=process.argv[1],fs=require("fs");const s=JSON.parse(fs.readFileSync(f));s.permissions={allow:["x"]};fs.writeFileSync(f,JSON.stringify(s)+"\n")' "$PROJ12/.claude/settings.json"
+BEFORE12="$(cat "$PROJ12/.claude/settings.json")"
+bash "$PROJ12/dev-qual/install.sh" --project "$PROJ12" --from-config >/dev/null
+assert_eq "$BEFORE12" "$(cat "$PROJ12/.claude/settings.json")" "re-install keeps a current settings.json's layout"
+
 finish
