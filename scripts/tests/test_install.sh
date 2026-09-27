@@ -187,4 +187,17 @@ CODE=0
 CLAUDE_PROJECT_DIR="$HOOKREPO" bash "$REPO_ROOT/scripts/agent-hook.sh" post-edit --scope user >/dev/null 2>&1 </dev/null || CODE=$?
 assert_eq 0 "$CODE" "agent-hook.sh post-edit: --scope user backs off when a project .dev-qual.env exists"
 
+# --- 10. platform pi, with pi not on PATH (true in CI and dev machines
+#         alike, since pi isn't installed here): succeeds and prints the
+#         manual command rather than failing the install ---
+if command -v pi >/dev/null 2>&1; then
+  echo "SKIP: pi test 10 — pi unexpectedly on PATH" >&2
+else
+  PROJ10="$(mk_tmp_project)"
+  OUT10="$(bash "$PROJ10/dev-qual/install.sh" --project "$PROJ10" --yes \
+    --tier local --platforms pi --hooks no 2>&1)"
+  assert_not_contains "$OUT10" "FAIL" "install with platforms=pi and no pi on PATH reports no failures"
+  assert_contains "$OUT10" "pi install" "install prints the manual pi install command"
+fi
+
 finish

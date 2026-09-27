@@ -96,6 +96,19 @@ AFTER_ENABLE3="$(tree_checksum "$HOME3")"
 assert_eq "$AFTER_INSTALL3" "$AFTER_ENABLE3" "enable (user): tree matches the post-install snapshot"
 assert_contains "$(cat "$HOME3/.config/dev-qual/config.env")" "ENABLED=1" "enable (user): state file records ENABLED=1"
 
+# --- 4b. platform pi, with pi not on PATH: disable still succeeds and
+#         prints the manual remove command rather than failing ---
+if command -v pi >/dev/null 2>&1; then
+  echo "SKIP: pi toggle test — pi unexpectedly on PATH" >&2
+else
+  PROJ4B="$(mk_tmp_project)"
+  bash "$PROJ4B/dev-qual/install.sh" --project "$PROJ4B" --yes --tier local \
+    --platforms pi --hooks no >/dev/null
+  OUT4B="$(bash "$PROJ4B/dev-qual/scripts/toggle.sh" disable --project "$PROJ4B" 2>&1)"
+  assert_not_contains "$OUT4B" "FAIL" "disable with platforms=pi and no pi on PATH reports no failures"
+  assert_contains "$OUT4B" "pi remove" "disable prints the manual pi remove command"
+fi
+
 # --- 4. not-installed cases exit 2 ---
 NOTINSTALLED="$(mk_tmp_repo)"
 assert_exit 2 "toggle.sh status: not installed exits 2" \

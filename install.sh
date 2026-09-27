@@ -11,7 +11,7 @@
 #   --user              shorthand for --scope user
 #   --scope             project (default) or user
 #   --tier               agent tier for AGENTS.md: local (small-context) or remote
-#   --platforms          comma-separated: claude,opencode or none
+#   --platforms          comma-separated: claude,opencode,pi or none
 #   --hooks yes|no       install git hooks (project scope only)
 #   --yes                accept defaults for anything not given (non-interactive)
 #   --from-config        read all answers from the scope's state file (non-interactive)
@@ -89,7 +89,7 @@ TIER="$(ask "$TIER" "Agent tier for AGENTS.md — local (small-context) or remot
 case "$TIER" in local|remote) ;; *) echo "Tier must be 'local' or 'remote'" >&2; exit 2 ;; esac
 
 # 4. Platforms
-PLATFORMS="$(ask "$PLATFORMS" "Agent platforms to wire up (claude,opencode or none)?" "claude,opencode")"
+PLATFORMS="$(ask "$PLATFORMS" "Agent platforms to wire up (claude,opencode,pi or none)?" "claude,opencode")"
 
 # 5. The tier entry block. Project scope: install.sh always owns AGENTS.md.
 #    User scope: the tier block only exists for OpenCode, so the OpenCode
@@ -102,17 +102,20 @@ if [ "$SCOPE" = "project" ]; then
 fi
 
 # 6. Platform adapters
-CLAUDE_ARGS=(); OPENCODE_ARGS=()
+CLAUDE_ARGS=(); OPENCODE_ARGS=(); PI_ARGS=()
 if [ "$SCOPE" = "project" ]; then
   CLAUDE_ARGS=(--project "$PROJECT")
   OPENCODE_ARGS=(--project "$PROJECT")
+  PI_ARGS=(--project "$PROJECT")
 else
   CLAUDE_ARGS=(--user)
   OPENCODE_ARGS=(--user --tier "$TIER")
+  PI_ARGS=(--user)
 fi
 [ "$ASSUME_YES" = 1 ] && CLAUDE_ARGS[${#CLAUDE_ARGS[@]}]="--yes"
 case ",$PLATFORMS," in *,claude,*) bash "$REPO/adapters/claude-code/install.sh" "${CLAUDE_ARGS[@]}" ;; esac
 case ",$PLATFORMS," in *,opencode,*) bash "$REPO/adapters/opencode/install.sh" "${OPENCODE_ARGS[@]}" ;; esac
+case ",$PLATFORMS," in *,pi,*) bash "$REPO/adapters/pi/install.sh" "${PI_ARGS[@]}" ;; esac
 
 # 7. Git hooks (project scope only — hooks are per repo)
 if [ "$SCOPE" = "project" ]; then

@@ -4,5 +4,22 @@
   "description": "Guidance, skills, and scripts that help coding agents deliver consistently high-quality code.",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/instantiator/dev-qual.git" },
+  "keywords": ["pi-package"],
+  "files": [
+    "agents-files/",
+    "guidance/",
+    "skills/",
+    "scripts/",
+    "configs/",
+    "adapters/pi/",
+    "install.sh",
+    "README.md",
+    "LICENSE",
+    "!**/tests/**"
+  ],
+  "pi": {
+    "skills": ["./skills"],
+    "extensions": ["./adapters/pi/extension.mjs"]
+  },
   "scripts": { "test": "bash scripts/run-unit-tests.sh" }
 }

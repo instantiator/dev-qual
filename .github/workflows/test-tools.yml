@@ -47,3 +47,6 @@ jobs:
 
       - name: Unit tests (strict)
         run: bash scripts/run-unit-tests.sh --strict
+
+      - name: Build pi package
+        run: bash scripts/build-pi-package.sh

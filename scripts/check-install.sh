@@ -168,8 +168,38 @@ else
   fi
 fi
 
-# 7. The state file itself
+# 7. pi package install — SKIP if pi wasn't chosen, or isn't on PATH; else
+#    inspect its settings file directly (never run `pi`) for this checkout.
 STATE_FILE="$(state_file_for "$SCOPE" "$PROJECT")"
+PLATFORMS="$(state_value "$STATE_FILE" PLATFORMS)"
+case ",$PLATFORMS," in
+  *,pi,*)
+    if ! has_cmd pi; then
+      record_result "pi" SKIP "pi not on PATH — install from https://github.com/badlogic/pi-mono"
+    else
+      if [ "$SCOPE" = "project" ]; then
+        PI_SETTINGS="$PROJECT/.pi/settings.json"
+      else
+        PI_SETTINGS="$HOME/.pi/agent/settings.json"
+      fi
+      if [ ! -f "$PI_SETTINGS" ]; then
+        record_result "pi" FAIL "no $PI_SETTINGS — re-run adapters/pi/install.sh"
+      elif node -e '
+          const fs = require("fs");
+          const [settingsPath, checkout] = process.argv.slice(1);
+          const text = fs.readFileSync(settingsPath, "utf8");
+          process.exit(text.includes(checkout) ? 0 : 1);
+        ' "$PI_SETTINGS" "$REPO"; then
+        record_result "pi" PASS
+      else
+        record_result "pi" FAIL "$PI_SETTINGS does not reference $REPO — re-run adapters/pi/install.sh"
+      fi
+    fi
+    ;;
+  *) record_result "pi" SKIP "pi not in PLATFORMS" ;;
+esac
+
+# 8. The state file itself
 if [ -f "$STATE_FILE" ]; then
   record_result "state file" PASS
 else

@@ -50,6 +50,9 @@ do_disable() {
     case ",$PLATFORMS," in
       *,opencode,*) bash "$REPO/adapters/opencode/install.sh" --project "$PROJECT" --remove ;;
     esac
+    case ",$PLATFORMS," in
+      *,pi,*) bash "$REPO/adapters/pi/install.sh" --project "$PROJECT" --remove ;;
+    esac
     undo_git_hooks
   else
     case ",$PLATFORMS," in
@@ -57,6 +60,9 @@ do_disable() {
     esac
     case ",$PLATFORMS," in
       *,opencode,*) bash "$REPO/adapters/opencode/install.sh" --user --remove ;;
+    esac
+    case ",$PLATFORMS," in
+      *,pi,*) bash "$REPO/adapters/pi/install.sh" --user --remove ;;
     esac
   fi
   sed -i.bak 's/^ENABLED=.*/ENABLED=0/' "$STATE_FILE"
