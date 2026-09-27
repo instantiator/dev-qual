@@ -16,5 +16,5 @@ tags: [nestjs, backend, framework]
 
 ## Testing
 
-- Unit test services with `@nestjs/testing`'s `Test.createTestingModule`, mocking providers by token (typed mocks, no `any` — see [typescript](../languages/typescript.md)).
+- Unit test services with `@nestjs/testing`'s `Test.createTestingModule`, mocking providers by token (typed mocks, no `any` — see [typescript](../languages/typescript/typescript.md)).
 - E2E test controllers with `supertest` against a compiled app instance; keep a separate jest config per tier ([testing](../standards/testing.md)).

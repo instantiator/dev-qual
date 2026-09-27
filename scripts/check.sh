@@ -90,7 +90,7 @@ check_node() {
   elif npm_has_script . lint; then
     run_stage "${STAGE_PREFIX}lint" "fix reported lint problems" npm run lint
   else
-    record_result "${STAGE_PREFIX}lint" SKIP "add a lint script (see guidance/languages/typescript.md)"
+    record_result "${STAGE_PREFIX}lint" SKIP "add a lint script (see guidance/languages/typescript/typescript.md)"
   fi
   # Typecheck
   if npm_has_script . typecheck; then
@@ -149,7 +149,7 @@ check_python() {
     || [ -f mypy.ini ] || [ -f .mypy.ini ]; then
     run_stage "${STAGE_PREFIX}typecheck" "fix reported type errors" mypy .
   else
-    record_result "${STAGE_PREFIX}typecheck" SKIP "add [tool.mypy] to pyproject.toml (see guidance/languages/python.md)"
+    record_result "${STAGE_PREFIX}typecheck" SKIP "add [tool.mypy] to pyproject.toml (see guidance/languages/python/python.md)"
   fi
   [ "$FAST" = 1 ] && return 0
   if ! has_cmd pytest; then

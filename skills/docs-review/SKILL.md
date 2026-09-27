@@ -24,7 +24,7 @@ After completing a feature or fix, or when asked to review/update documentation.
 3. Remove documentation for code that no longer exists.
 4. Add docs for new architecture-level parts or flows introduced by the change, with mermaid diagrams where they beat prose.
 5. Update `docs/index.md` so every doc is listed with a one-line description.
-6. Check readability: GFM formatting, working relative links, heading structure (`guidance/languages/markdown.md`).
+6. Check readability: GFM formatting, working relative links, heading structure (`guidance/languages/markdown/markdown.md`).
 
 ## Scripts
 

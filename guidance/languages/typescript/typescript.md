@@ -23,4 +23,4 @@ tags: [typescript, language]
 | Slop scan | `npx aislop scan` |
 
 - Expose each as an npm script (`lint`, `lint:check`, `format`, `typecheck`, `test`) so `check.sh` and CI can find them.
-- For TypeScript as a scripting language (not an app), see [node-scripting](node-scripting.md).
+- For TypeScript as a scripting language (not an app), see [node-scripting](../node-scripting/node-scripting.md).

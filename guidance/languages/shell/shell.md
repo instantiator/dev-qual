@@ -12,7 +12,7 @@ tags: [shell, bash, scripting, cross-platform]
 - Write scripts in **bash**, targeting **bash 3.2** (the macOS default; avoid associative arrays, `${var,,}`, and other bash-4+ features).
 - Shebang: `#!/usr/bin/env bash`. Start with `set -euo pipefail`.
 - Windows users run scripts via **Git Bash** (installed with git) — do not write `.ps1` twins unless the project has a real Windows-native requirement.
-- If a script needs JSON parsing, HTTP calls, or complex data structures, use Node instead — see [node-scripting](node-scripting.md).
+- If a script needs JSON parsing, HTTP calls, or complex data structures, use Node instead — see [node-scripting](../node-scripting/node-scripting.md).
 
 ## Structure
 

@@ -14,7 +14,7 @@ tags: [standards, documentation, markdown]
 - Use GitHub-flavoured markdown: tables for enumerable facts, code fences with language tags, relative links between docs.
 - Documentation describes _current_ behaviour. When code changes, update the related docs in the same change; remove docs for removed code.
 - Record architectural decisions as ADRs in `docs/ADRs/NNNN-title.md` with context, decision, and consequences (see the `adr` skill).
-- Markdown style rules: [markdown](../languages/markdown.md).
+- Markdown style rules: [markdown](../languages/markdown/markdown.md).
 
 ## Writing ADRs for clarity
 
