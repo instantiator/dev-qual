@@ -96,9 +96,10 @@ check_baseline() {
   esac
 }
 
-# True if list_files would match anything
+# True if list_files would match anything. Not `| grep -q`: in a large tree
+# grep exits early, find dies of SIGPIPE, and pipefail reports no files.
 has_files() {
-  list_files "$1" | grep -q .
+  [ -n "$(list_files "$1")" ]
 }
 
 check_node() {
