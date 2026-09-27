@@ -19,10 +19,27 @@ function mkTmpRepo() {
   return dir;
 }
 
-// A fake pi API that records every pi.on(event, handler) registration.
+// A fake pi API that records handler registrations and sent messages.
 function fakePi() {
   const handlers = {};
-  return { on: (event, handler) => { handlers[event] = handler; }, handlers };
+  const sent = [];
+  return {
+    on: (event, handler) => { handlers[event] = handler; },
+    sendMessage: (message, options) => { sent.push({ message, options }); },
+    handlers,
+    sent,
+  };
+}
+
+// A project-scope install whose tree fails the fast gate: a shell script
+// with a shellcheck finding, uncommitted so the stop gate sees code changed.
+function mkFailingProject() {
+  const repo = mkTmpRepo();
+  const checkout = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  writeFileSync(path.join(repo, ".dev-qual.env"),
+    `SCOPE=project\nTIER=local\nENABLED=1\nCHECKOUT=${checkout}\n`);
+  writeFileSync(path.join(repo, "bad.sh"), "#!/usr/bin/env bash\necho $1\n");
+  return repo;
 }
 
 test("registers the expected events", () => {
@@ -33,7 +50,7 @@ test("registers the expected events", () => {
   })();
   assert.deepEqual(
     Object.keys(handlers).sort(),
-    ["agent_before_settle", "before_agent_start", "session_start", "tool_result"].sort(),
+    ["agent_end", "before_agent_start", "session_start", "tool_result"].sort(),
   );
 });
 
@@ -131,4 +148,35 @@ test("renderEntry: rewrites the entry sentence and every other dev-qual/ path", 
   assert.ok(rendered.includes("dev-qual is installed at `/abs/checkout`"));
   assert.ok(rendered.includes("/abs/checkout/guidance/index.md"), "the plain doc reference was rewritten");
   assert.ok(!rendered.includes("clone <https://github.com/instantiator/dev-qual>"), "the old sentence is gone");
+});
+
+test("tool_result: non-edit tools are left alone", () => {
+  const pi = fakePi();
+  extension(pi);
+  const repo = mkFailingProject();
+  const result = pi.handlers.tool_result({ toolName: "read", content: [] }, { cwd: repo });
+  assert.equal(result, undefined);
+});
+
+test("tool_result: a failing fast gate is appended to an edit's result", () => {
+  const pi = fakePi();
+  extension(pi);
+  const repo = mkFailingProject();
+  const original = { type: "text", text: "edited bad.sh" };
+  const result = pi.handlers.tool_result({ toolName: "edit", content: [original] }, { cwd: repo });
+  assert.equal(result.content[0], original);
+  assert.match(result.content[1].text, /dev-qual post-edit gate/);
+  assert.match(result.content[1].text, /shellcheck/);
+});
+
+test("agent_end: re-prompts once on a failing gate, then lets the agent stop", () => {
+  const pi = fakePi();
+  extension(pi);
+  const repo = mkFailingProject();
+  pi.handlers.agent_end({ messages: [] }, { cwd: repo });
+  assert.equal(pi.sent.length, 1);
+  assert.equal(pi.sent[0].options.triggerTurn, true);
+  assert.match(pi.sent[0].message.content, /dev-qual stop gate/);
+  pi.handlers.agent_end({ messages: [] }, { cwd: repo });
+  assert.equal(pi.sent.length, 1, "second agent_end in a row is not blocked");
 });

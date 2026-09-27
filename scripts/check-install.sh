@@ -185,10 +185,19 @@ case ",$PLATFORMS," in
       if [ ! -f "$PI_SETTINGS" ]; then
         record_result "pi" FAIL "no $PI_SETTINGS — re-run adapters/pi/install.sh"
       elif node -e '
-          const fs = require("fs");
+          // pi records local packages relative to its settings directory
+          // (and may store an entry as { source }), so resolve before comparing.
+          const fs = require("fs"), path = require("path");
           const [settingsPath, checkout] = process.argv.slice(1);
-          const text = fs.readFileSync(settingsPath, "utf8");
-          process.exit(text.includes(checkout) ? 0 : 1);
+          const packages = JSON.parse(fs.readFileSync(settingsPath, "utf8")).packages || [];
+          const real = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
+          const want = real(checkout);
+          const found = packages.some((entry) => {
+            const source = typeof entry === "string" ? entry : entry && entry.source;
+            return typeof source === "string"
+              && real(path.resolve(path.dirname(settingsPath), source)) === want;
+          });
+          process.exit(found ? 0 : 1);
         ' "$PI_SETTINGS" "$REPO"; then
         record_result "pi" PASS
       else

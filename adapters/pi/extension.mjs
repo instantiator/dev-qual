@@ -3,30 +3,22 @@
 // a user-scope install, the session-start update check, and the post-edit /
 // stop quality gates via scripts/agent-hook.sh.
 //
-// Verified against pi's docs on 2026-09-27 (packages.md, extensions.md,
-// configuration.md — no other source trusted):
-// - extensions are plain files with a default export `(pi) => {...}`,
-//   loaded from `.ts`/`.js` (or a directory with an index); registration is
-//   `pi.on(eventName, handler)`.
-// - events include session_start, before_agent_start, tool_call, tool_result,
-//   agent_before_settle, agent_settled.
-// - before_agent_start "exposes both the current prompt and its structured
-//   systemPromptOptions"; returning `systemPrompt` replaces the prompt for
-//   that run — there is no separate append field, so appending means
-//   returning the current prompt plus our text.
-// - tool_result handlers "compose, with each handler seeing prior changes" —
-//   the only documented way for this event to add text back for the model.
-// - agent_before_settle "is the final actionable boundary: it can append
-//   entries and request one continuation" via `{ continue: true }".
-// - ctx.ui.notify(message, level) surfaces text outside a prompt/result.
-// - configuration.md's "context files" section confirms pi auto-loads
-//   AGENTS.md/CLAUDE.md from the project directory and its parents itself,
-//   without project trust — see readState() below for what that means here.
-//
-// Not documented anywhere in the fetched pages: a dedicated shell-exec API
-// (no `pi.exec`), so hooks are run with node:child_process like any other
-// Node ESM module; and the exact field names on tool_call/tool_result events
-// (tool name, result text), so those are read defensively with fallbacks.
+// Written against the extension types shipped in
+// @mariozechner/pi-coding-agent 0.73.1 (dist/core/extensions/types.d.ts),
+// which is what `npm i -g` installs; the docs on pi's main branch describe
+// newer events (e.g. agent_before_settle) that release does not have.
+// - default export `(pi) => {...}`; `pi.on(event, (event, ctx) => result)`,
+//   with `ctx.cwd` the session's working directory.
+// - before_agent_start: `event.systemPrompt`; returning `{ systemPrompt }`
+//   replaces it for that turn.
+// - tool_result: `event.toolName` ("edit", "write", ...) and
+//   `event.content` (text/image parts); returning `{ content }` replaces
+//   what the model sees.
+// - agent_end: fired when a run finishes, with no result. An extension
+//   continues the agent with `pi.sendMessage(msg, { triggerTurn: true })`.
+// - pi.sendMessage({ customType, content, display }) puts a message in the
+//   session the model reads; `deliverAs: "nextTurn"` queues it.
+// - pi reads AGENTS.md from the project and its parents itself.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
@@ -121,14 +113,15 @@ function tierEntry(state) {
 }
 
 // Run scripts/agent-hook.sh <event> --scope <scope>, feeding it stdin and
-// returning its outcome instead of throwing on the exit-2 "block" case that
+// in the session's directory (pinned via CLAUDE_PROJECT_DIR, which the
+// script prefers over its cwd), returning its outcome instead of throwing on the exit-2 "block" case that
 // post-edit/stop use.
-function runHook(event, scope, stdin) {
+function runHook(event, scope, cwd, stdin) {
   try {
     const stdout = execFileSync(
       "bash",
       [path.join(CHECKOUT_DIR, "scripts", "agent-hook.sh"), event, "--scope", scope],
-      { input: stdin ?? "", encoding: "utf8" },
+      { input: stdin ?? "", encoding: "utf8", cwd, env: { ...process.env, CLAUDE_PROJECT_DIR: cwd } },
     );
     return { code: 0, stdout, stderr: "" };
   } catch (err) {
@@ -136,55 +129,62 @@ function runHook(event, scope, stdin) {
   }
 }
 
-// True when a tool_call/tool_result event looks like an edit — pi's exact
-// tool-name field isn't confirmed in the fetched docs, so this checks the
-// common candidate fields defensively rather than picking one.
-function looksLikeEditTool(event) {
-  const name = event.tool ?? event.toolName ?? event.name ?? "";
-  return /edit|write/i.test(name);
+// Tools whose results can leave the tree failing the fast gate.
+const EDIT_TOOLS = new Set(["edit", "write"]);
+
+// A session message the model reads, labelled as dev-qual's.
+function devQualMessage(text) {
+  return { customType: "dev-qual", content: text, display: true };
 }
 
 export default function (pi) {
+  // Set when the stop gate re-prompted the agent, so the next agent_end is
+  // reported as a re-invocation and agent-hook.sh lets it through: the gate
+  // blocks at most once in a row, like Claude Code's stop_hook_active.
+  let stopGateFired = false;
+
   // Append dev-qual's entry instructions for a user-scope install. Project
   // scope is intentionally skipped — see readState()'s comment.
-  pi.on("before_agent_start", (event) => {
-    const { inject, state } = readState(process.cwd(), process.env);
+  pi.on("before_agent_start", (event, ctx) => {
+    const { inject, state } = readState(ctx?.cwd ?? process.cwd(), process.env);
     if (!inject) return undefined;
-    const current = event.systemPrompt ?? "";
-    return { systemPrompt: `${current}\n\n${tierEntry(state)}` };
+    return { systemPrompt: `${event.systemPrompt ?? ""}\n\n${tierEntry(state)}` };
   });
 
-  // Non-blocking update check, surfaced through the UI notification API.
+  // Non-blocking update check; queued so the model sees it on its next turn.
   pi.on("session_start", (event, ctx) => {
-    const { governing } = readState(process.cwd(), process.env);
+    const cwd = ctx?.cwd ?? process.cwd();
+    const { governing } = readState(cwd, process.env);
     if (governing === "none") return undefined;
-    const { stdout } = runHook("session-start", governing);
-    if (stdout.trim() && ctx?.ui?.notify) ctx.ui.notify(stdout.trim(), "info");
+    const { stdout } = runHook("session-start", governing, cwd);
+    if (stdout.trim()) pi.sendMessage(devQualMessage(stdout.trim()), { deliverAs: "nextTurn" });
     return undefined;
   });
 
-  // Post-edit gate: fold a failing fast check into the edit tool's own
-  // result, the only documented way for tool_result to add text back for
-  // the model (handlers "compose, with each handler seeing prior changes").
-  pi.on("tool_result", (event) => {
-    if (!looksLikeEditTool(event)) return undefined;
-    const { governing, state } = readState(process.cwd(), process.env);
+  // Post-edit gate: append a failing fast check to the edit's own result.
+  pi.on("tool_result", (event, ctx) => {
+    if (!EDIT_TOOLS.has(event.toolName)) return undefined;
+    const cwd = ctx?.cwd ?? process.cwd();
+    const { governing, state } = readState(cwd, process.env);
     if (governing === "none" || state.ENABLED !== "1") return undefined;
-    const { code, stderr } = runHook("post-edit", governing);
-    if (code === 0) return undefined;
-    return { result: `${event.result ?? ""}\n\ndev-qual post-edit gate:\n${stderr}` };
+    const { code, stderr } = runHook("post-edit", governing, cwd);
+    if (code !== 2) return undefined;
+    const note = { type: "text", text: `dev-qual post-edit gate:\n${stderr}` };
+    return { content: [...(event.content ?? []), note] };
   });
 
-  // Stop gate: agent_before_settle is the last point that can both append
-  // an entry and request one continuation, matching Claude Code's Stop
-  // hook. agent-hook.sh itself refuses to block twice in a row (it reads
-  // stop_hook_active from stdin), so this can't loop.
-  pi.on("agent_before_settle", (event) => {
-    const { governing, state } = readState(process.cwd(), process.env);
+  // Stop gate: when a run ends with failing checks or unticked plan stages,
+  // re-prompt the agent once with what agent-hook.sh reported.
+  pi.on("agent_end", (event, ctx) => {
+    const cwd = ctx?.cwd ?? process.cwd();
+    const { governing, state } = readState(cwd, process.env);
     if (governing === "none" || state.ENABLED !== "1") return undefined;
-    const stdin = JSON.stringify({ stop_hook_active: Boolean(event.stopHookActive) });
-    const { code, stderr } = runHook("stop", governing, stdin);
-    if (code === 0) return undefined;
-    return { appendEntry: stderr, continue: true };
+    const stdin = JSON.stringify({ stop_hook_active: stopGateFired });
+    stopGateFired = false;
+    const { code, stderr } = runHook("stop", governing, cwd, stdin);
+    if (code !== 2) return undefined;
+    stopGateFired = true;
+    pi.sendMessage(devQualMessage(stderr), { triggerTurn: true });
+    return undefined;
   });
 }
