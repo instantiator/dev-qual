@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    {
+      "name": "pkg-nofix",
+      "version": "1.0.0",
+      "vulns": [{"id": "V5", "fix_versions": [], "aliases": [], "description": "no fix available"}]
+    }
+  ]
+}

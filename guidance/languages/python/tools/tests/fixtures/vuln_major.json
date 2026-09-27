@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    {
+      "name": "pkg-major",
+      "version": "1.0.0",
+      "vulns": [{"id": "V4", "fix_versions": ["2.0.0"], "aliases": [], "description": "major bump"}]
+    }
+  ]
+}

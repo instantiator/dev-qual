@@ -27,6 +27,7 @@ Run `dev-qual/scripts/check.sh`. It formats, lints, typechecks, builds, runs uni
 ## 3. Documentation
 
 - Update project docs that relate to the new or changed code; remove docs for removed code ([documentation](../standards/documentation.md)).
+- `dev-qual/scripts/stale-docs.sh --base <branch-point>` lists the doc lines that mention changed files or removed declarations: resolve each hit.
 
 ## 4. Outstanding work
 

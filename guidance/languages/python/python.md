@@ -37,3 +37,10 @@ with one short sentence, blank line before anything further.
 - Pin the dependency set with a lockfile (`uv.lock`, `poetry.lock`, or a compiled `requirements.txt`) and commit it.
 - `scripts/check.sh` runs format, lint, typecheck, and tests automatically when it detects a Python project.
 - For Python as a scripting language, the shell/Node trade-off in [node-scripting](../node-scripting/node-scripting.md) applies equally: a 10-line bash script beats a Python project.
+
+## dev-qual tools
+
+`tools/` has stdlib-only scripts that enforce the above:
+
+- Adopt `tools/ruff-baseline.toml` via `extend` in your ruff config, then verify with `tools/check_baseline.py`.
+- Run `tools/vuln_report.py` for a ranked, actionable `pip-audit` report.

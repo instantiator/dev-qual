@@ -1,0 +1,34 @@
+<Project>
+  <!--
+    dev-qual's C# baseline, part two: the one setting that must be
+    evaluated after the project's own properties and package references
+    are in scope, so it belongs in Directory.Build.targets rather than
+    Directory.Build.props (see Baseline.props for the rest of the
+    baseline, and why it must be split this way).
+
+    To adopt, import this file from the project's own
+    Directory.Build.targets (create one at the solution/repo root if it
+    doesn't exist):
+
+      <Import Project="$(MSBuildThisFileDirectory)dev-qual/guidance/languages/csharp/tools/Baseline.targets" />
+
+    Adjust the path to wherever dev-qual is checked out relative to the
+    importing file. Verify adoption with:
+
+      dotnet run tools/check-baseline.cs, passing the project dir with the
+      project option; see its help for the exact flag.
+
+    NB. Baseline.props turns a missing `///` comment on a public member
+    into a build error (CS1591), via GenerateDocumentationFile plus
+    TreatWarningsAsErrors. Test projects are exempted from just that one
+    warning here, conditioned on `IsTestProject` — a property that
+    Microsoft.NET.Test.Sdk sets (referenced by the MSTest/NUnit/xUnit
+    SDKs). Directory.Build.props is imported before the project body and
+    its package references, while `IsTestProject` is set from a package's
+    own props file, imported later; Directory.Build.targets is imported
+    after all of that, so this condition sees the real value.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>
