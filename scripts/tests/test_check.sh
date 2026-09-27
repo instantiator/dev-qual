@@ -46,4 +46,11 @@ for i in $(seq 1 2000); do
 done
 assert_contains "$(run_check "$PROJ2" | sed -n '/== Results/,$p')" "markdownlint" "markdownlint stage runs in a large tree"
 
+# --- 3. a project config wins, even when it is the only one of the
+#        recognised names present ---
+PROJ3="$(mk_tmp_repo)"
+echo "# Doc" >"$PROJ3/a.md"
+echo '{}' >"$PROJ3/.markdownlint.jsonc"
+assert_not_contains "$(run_check "$PROJ3")" "[--config]" "dev-qual's config is not forced over the project's"
+
 finish

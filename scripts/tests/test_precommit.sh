@@ -78,4 +78,19 @@ code=0
 git -C "$NODE_REPO" commit -qm "lint via node_modules" >/dev/null 2>&1 || code=$?
 assert_eq 0 "$code" "lint scripts can use the working tree's node_modules"
 
+# A monorepo: lint needs a workspace's own node_modules and a file inside a
+# submodule, neither of which is tracked, so both must reach the snapshot
+MONO="$(mk_tmp_repo)"
+git -C "$MONO" config core.hooksPath "$REPO_ROOT/scripts/hooks"
+mkdir -p "$MONO/pkg/node_modules/dep" "$MONO/sub"
+touch "$MONO/pkg/node_modules/dep/marker" "$MONO/sub/marker"
+printf 'node_modules\nsub/\n' >"$MONO/.gitignore"
+printf '[submodule "sub"]\n\tpath = sub\n\turl = x\n' >"$MONO/.gitmodules"
+printf '{"scripts":{"lint":"test -f pkg/node_modules/dep/marker && test -f sub/marker"}}\n' >"$MONO/package.json"
+echo "{}" >"$MONO/pkg/package.json"
+git -C "$MONO" add .
+CODE=0
+git -C "$MONO" commit -qm mono >/dev/null 2>&1 || CODE=$?
+assert_eq 0 "$CODE" "nested node_modules and submodule checkouts are linked into the snapshot"
+
 finish

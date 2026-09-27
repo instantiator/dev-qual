@@ -291,8 +291,11 @@ if has_files '*.md'; then
     # The project's own config wins. Where it has none, use the config shipped
     # here, which switches off the stylistic rules this guidance disagrees with.
     collect_files '*.md'
-    if ! ls .markdownlint.json .markdownlint.jsonc .markdownlint.yaml .markdownlintrc \
-      >/dev/null 2>&1; then
+    MD_CONFIG=""
+    for f in .markdownlint.json .markdownlint.jsonc .markdownlint.yaml .markdownlint.yml .markdownlintrc; do
+      [ -f "$f" ] && MD_CONFIG="$f"
+    done
+    if [ -z "$MD_CONFIG" ]; then
       FILES=(--config "$SCRIPT_DIR/../configs/markdownlint.json" "${FILES[@]}")
     fi
     run_stage "markdownlint" "fix reported markdown problems" markdownlint "${FILES[@]}"
