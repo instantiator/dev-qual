@@ -65,7 +65,9 @@ case "$EVENT" in
     exit 2
     ;;
   session-start)
-    # Reserved for a later stage.
+    # Non-blocking update check; its stdout becomes Claude Code's
+    # SessionStart context, so let it through and never fail the event.
+    bash "$SCRIPT_DIR/check-updates.sh" --quiet || true
     exit 0
     ;;
   stop)

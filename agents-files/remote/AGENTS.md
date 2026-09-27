@@ -13,6 +13,7 @@ These rules are mandatory and override your defaults. `dev-qual/` is in this rep
 
 ## Process
 
+- Before starting work: run `dev-qual/scripts/check-updates.sh`; if it reports an update, offer to run `dev-qual/scripts/upgrade.sh` first.
 - Planning is collaborative: present options and trade-offs before committing to libraries, approaches, data structures, or key business logic.
 - Before coding: read `dev-qual/guidance/process/before-coding.md`.
 - Route via `dev-qual/guidance/index.md`: lazy-load only the docs relevant to the task, following references recursively when needed.

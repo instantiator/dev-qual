@@ -165,6 +165,14 @@ render_entry() {
   printf '%s\n' "$content"
 }
 
+# Print one KEY's value from a state file, or nothing if either is absent,
+# without sourcing it into the caller: state_value <file> <key>
+state_value() {
+  [ -f "$1" ] || return 0
+  # shellcheck disable=SC1090
+  (. "$1"; eval "printf '%s' \"\${$2:-}\"")
+}
+
 # Print the state file path for a scope: state_file_for <scope> [project]
 state_file_for() {
   local scope="$1" project="${2:-}"

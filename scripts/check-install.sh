@@ -142,6 +142,8 @@ if [ "$SCOPE" = "user" ]; then
   : # nothing to check
 elif ! git -C "$PROJECT" rev-parse --git-dir >/dev/null 2>&1; then
   record_result "git-hooks" SKIP "$PROJECT is not a git repository"
+elif [ "$(state_value "$(state_file_for project "$PROJECT")" HOOKS)" = "no" ]; then
+  record_result "git-hooks" SKIP "not chosen at install (HOOKS=no in .dev-qual.env)"
 else
   HOOKS_PATH="$(git -C "$PROJECT" config core.hooksPath || true)"
   if [ "$HOOKS_PATH" = "$REPO/scripts/hooks" ]; then
