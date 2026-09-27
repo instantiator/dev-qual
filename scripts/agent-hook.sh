@@ -82,7 +82,7 @@ offer_git_hooks() {
   [ "$(git -C "$root" config --get devqual.hooks || true)" = "declined" ] && return 0
   hooks_path="$(git -C "$root" config --get core.hooksPath || true)"
   [ "$hooks_path" = "$SCRIPT_DIR/hooks" ] && return 0
-  hooks_dir="$(cd "$root" && cd "$(git rev-parse --git-path hooks)" 2>/dev/null && pwd || true)"
+  hooks_dir="$(git -C "$root" rev-parse --path-format=absolute --git-path hooks)"
   if [ -n "$hooks_dir" ] && grep -qs "check.sh" "$hooks_dir/pre-commit"; then
     return 0
   fi
