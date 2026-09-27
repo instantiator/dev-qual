@@ -5,7 +5,8 @@
 # plus shellcheck, actionlint, and markdownlint wherever those files exist,
 # and prints a PASS/FAIL/SKIP table with a fix-hint per failure.
 # Missing tools SKIP with an install hint; the gate never crashes on absence.
-# Submodules (dev-qual among them) are not linted: each is its own repo's job.
+# Files git ignores are not linted, nor are submodules (dev-qual among them):
+# each submodule is its own repo's job.
 #
 # Usage: check.sh [--fast|--comprehensive] [--fix] [--suite <name>] [--project <dir>]
 #   --fast           format + lint + typecheck only (used by the pre-commit hook)
@@ -41,12 +42,8 @@ if [ "$FAST" = 1 ] && [ "$COMPREHENSIVE" = 1 ]; then
 fi
 
 cd "$PROJECT"
-# Submodules and this checkout belong to other repos, so list_files skips them.
-# Starts non-empty: bash 3.2 errors on an empty array under set -u.
-EXCLUDES=(-not -path './.git/*')
-while IFS= read -r p; do
-  [ -n "$p" ] && EXCLUDES+=(-not -path "./$p/*")
-done <<<"$(ignored_paths . "$(cd "$SCRIPT_DIR/.." && pwd)")"
+# Submodules and this checkout belong to other repos, so list_files skips them
+IGNORED="$(ignored_paths . "$(cd "$SCRIPT_DIR/.." && pwd)")"
 STACKS="$(detect_stacks .)"
 MODE="full"
 if [ "$FAST" = 1 ]; then MODE="fast"; fi
@@ -69,14 +66,33 @@ run_stage() {
   fi
 }
 
-# List the project's files matching a name pattern, skipping build output,
-# virtualenvs, and EXCLUDES: list_files <find-name-pattern>
+# List the project's files matching a name pattern, one per line, skipping
+# ignored files, dependencies, build output, and IGNORED: list_files <glob>
 list_files() {
-  find . -name "$1" \
-    -not -path './node_modules/*' \
-    -not -path './.venv/*' -not -path './venv/*' \
-    -not -path './bin/*' -not -path './obj/*' \
-    "${EXCLUDES[@]}"
+  local f p
+  {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      # Honours .gitignore, and never descends into submodules
+      git ls-files -co --exclude-standard -- "$1"
+    else
+      find . -name "$1" -not -path '*/node_modules/*' -not -path '*/.git/*' \
+        -not -path '*/.venv/*' -not -path '*/venv/*' \
+        -not -path './bin/*' -not -path './obj/*' | sed 's|^\./||'
+    fi
+  } | while IFS= read -r f; do
+    [ -e "$f" ] || continue # tracked, but deleted from the working tree
+    while IFS= read -r p; do
+      case "$f" in "$p"/*) continue 2 ;; esac
+    done <<<"$IGNORED"
+    printf '%s\n' "$f"
+  done
+}
+
+# Fill FILES from list_files, keeping names with spaces whole: collect_files <glob>
+collect_files() {
+  local f
+  FILES=()
+  while IFS= read -r f; do FILES+=("$f"); done < <(list_files "$1")
 }
 
 # Report whether the project extends a language's dev-qual lint baseline:
@@ -245,9 +261,8 @@ STAGE_PREFIX=""
 # Generic stages, whatever the stack
 if has_files '*.sh'; then
   if has_cmd shellcheck; then
-    # Word-splitting the file list is intended here
-    # shellcheck disable=SC2046
-    run_stage "shellcheck" "fix shellcheck findings" shellcheck $(list_files '*.sh')
+    collect_files '*.sh'
+    run_stage "shellcheck" "fix shellcheck findings" shellcheck "${FILES[@]}"
   else
     record_result "shellcheck" SKIP "install shellcheck (mac: brew install shellcheck)"
   fi
@@ -275,15 +290,12 @@ if has_files '*.md'; then
   if has_cmd markdownlint; then
     # The project's own config wins. Where it has none, use the config shipped
     # here, which switches off the stylistic rules this guidance disagrees with.
-    MD_ARGS=""
+    collect_files '*.md'
     if ! ls .markdownlint.json .markdownlint.jsonc .markdownlint.yaml .markdownlintrc \
       >/dev/null 2>&1; then
-      MD_ARGS="--config $SCRIPT_DIR/../configs/markdownlint.json"
+      FILES=(--config "$SCRIPT_DIR/../configs/markdownlint.json" "${FILES[@]}")
     fi
-    # Word-splitting both the config flag and the file list is intended here
-    # shellcheck disable=SC2046,SC2086
-    run_stage "markdownlint" "fix reported markdown problems" \
-      markdownlint $MD_ARGS $(list_files '*.md')
+    run_stage "markdownlint" "fix reported markdown problems" markdownlint "${FILES[@]}"
   else
     record_result "markdownlint" SKIP "install markdownlint (npm i -g markdownlint-cli)"
   fi
