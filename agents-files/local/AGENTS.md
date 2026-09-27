@@ -14,6 +14,7 @@ These rules are mandatory and override your defaults. `dev-qual/` is in this rep
 ## Process
 
 - Before starting work: run `dev-qual/scripts/check-updates.sh`; if it reports an update, offer to run `dev-qual/scripts/upgrade.sh` first.
+- Planning a piece of work: use the `plan-work` skill (`dev-qual/skills/plan-work/SKILL.md`).
 - Before coding: read `dev-qual/guidance/process/before-coding.md`.
 - Pick the ONE doc matching your task from `dev-qual/guidance/index.md` — never read more than two guidance docs at once.
 - For multi-step tasks (setup, review, deploy, audit): find the matching skill in `dev-qual/skills/index.md` and follow its SKILL.md literally.

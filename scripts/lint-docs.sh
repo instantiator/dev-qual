@@ -70,7 +70,7 @@ for d in "$REPO/guidance" "$REPO/skills"; do
   [ -d "$d" ] && SCAN_DIRS="$SCAN_DIRS $d"
 done
 # shellcheck disable=SC2086
-DOCS="$(find $SCAN_DIRS -name '*.md' -not -path '*/tools/*' | sort)"
+DOCS="$(find $SCAN_DIRS -name '*.md' -not -path '*/tools/*' -not -path '*/templates/*' | sort)"
 
 for file in $DOCS; do
   lines="$(wc -l <"$file" | tr -d ' ')"

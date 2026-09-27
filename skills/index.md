@@ -7,6 +7,7 @@ tags: [skills, index]
 
 # Skills
 
+- [plan-work](plan-work/SKILL.md) — Build a staged, gated implementation plan before coding. Use when asked to plan, in planning mode, or before any task with more than one unit of work.
 - [project-setup](project-setup/SKILL.md) — Set up a new project, with or without a templating tool. Use when starting a project, scaffolding an app, or working in an empty repo.
 - [ci-setup](ci-setup/SKILL.md) — Set up continuous integration for a repository. Use when asked to add CI, or when a repo has no workflow files.
 - [testing-setup](testing-setup/SKILL.md) — Add test suites and per-suite launch scripts to a project. Use when a project lacks tests or needs a new test tier.

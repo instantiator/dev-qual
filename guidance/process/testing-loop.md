@@ -24,6 +24,8 @@ unit tests always, heavier tiers where the change warrants them.
 2. Write or update tests for them and run them.
 3. Fix anything that fails, or move on to the next unit.
 
+In a plan, each unit is a stage and ends with its gate ([plan-work](../../skills/plan-work/SKILL.md)).
+
 ## The three gates
 
 `dev-qual/scripts/check.sh` has three modes. Anything you change in
