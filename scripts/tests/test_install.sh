@@ -41,6 +41,7 @@ OUT="$(bash "$PROJ1/dev-qual/install.sh" --project "$PROJ1" --yes --tier local -
 assert_eq 1 "$(grep -c 'dev-qual:start -->' "$PROJ1/AGENTS.md")" "one dev-qual block in AGENTS.md"
 assert_eq 1 "$(grep -c 'dev-qual:skills:start -->' "$PROJ1/AGENTS.md")" "one dev-qual:skills block in AGENTS.md"
 assert_eq 1 "$(grep -c 'dev-qual:start -->' "$PROJ1/CLAUDE.md")" "one dev-qual block in CLAUDE.md"
+assert_eq 1 "$(grep -cx '@AGENTS.md' "$PROJ1/CLAUDE.md")" "project scope: CLAUDE.md imports AGENTS.md"
 assert_file "$PROJ1/.claude/skills/adr" ".claude/skills/adr symlink exists"
 if [ -L "$PROJ1/.claude/skills/adr" ]; then PASS_COUNT=$((PASS_COUNT + 1)); else
   echo "FAIL: adr skill is a symlink" >&2; FAIL_COUNT=$((FAIL_COUNT + 1))
@@ -57,6 +58,14 @@ BEFORE="$(tree_checksum "$PROJ1")"
 bash "$PROJ1/dev-qual/install.sh" --project "$PROJ1" --yes --tier local --platforms claude,opencode --hooks no >/dev/null
 AFTER="$(tree_checksum "$PROJ1")"
 assert_eq "$BEFORE" "$AFTER" "re-running the same install is a no-op"
+
+# --- 2b. a hand-set PLANS_GLOB (spaces and all) survives a re-install ---
+PROJ2B="$(mk_tmp_project)"
+bash "$PROJ2B/dev-qual/install.sh" --project "$PROJ2B" --yes --tier local --platforms claude --hooks no >/dev/null
+printf '%s\n' "PLANS_GLOB='docs/prompts/phase 04 - x/*.plan*.md'" >>"$PROJ2B/.dev-qual.env"
+bash "$PROJ2B/dev-qual/install.sh" --project "$PROJ2B" --yes --tier local --platforms claude --hooks no >/dev/null
+# shellcheck source=/dev/null
+assert_eq 'docs/prompts/phase 04 - x/*.plan*.md' "$(. "$PROJ2B/.dev-qual.env"; printf '%s' "$PLANS_GLOB")" "re-install keeps PLANS_GLOB"
 
 # --- 3. --from-config reproduces the tree from a clean project ---
 PROJ3="$(mk_tmp_project)"
@@ -108,6 +117,8 @@ CLAUDE_MD6="$HOME6/.claude/CLAUDE.md"
 OPENCODE_AGENTS6="$HOME6/.config/opencode/AGENTS.md"
 assert_contains "$(cat "$CLAUDE_MD6")" "$REPO_ROOT" "user scope: CLAUDE.md has the absolute checkout path"
 assert_not_contains "$(cat "$CLAUDE_MD6")" '`dev-qual/' "user scope: CLAUDE.md has no bare dev-qual/ paths"
+assert_eq 1 "$(grep -cx "@$REPO_ROOT/agents-files/remote/AGENTS.md" "$CLAUDE_MD6")" "user scope: CLAUDE.md imports the checkout's remote AGENTS.md"
+assert_eq 0 "$(grep -cx '@AGENTS.md' "$CLAUDE_MD6" || true)" "user scope: no bare @AGENTS.md import"
 assert_eq 1 "$(grep -c 'dev-qual:start -->' "$OPENCODE_AGENTS6")" "user scope: opencode AGENTS.md has the tier block"
 assert_eq 1 "$(grep -c 'dev-qual:skills:start -->' "$OPENCODE_AGENTS6")" "user scope: opencode AGENTS.md has the skills block"
 assert_contains "$(cat "$OPENCODE_AGENTS6")" "$REPO_ROOT/skills" "user scope: opencode skills paths are absolute"

@@ -115,4 +115,34 @@ OUT8="$(bash "$REPO_ROOT/scripts/plan-status.sh" --project "$WITHPLAN")" || CODE
 assert_eq 1 "$CODE" "plan-status: active plan with unchecked stage exits 1"
 assert_contains "$OUT8" "Stage 2" "plan-status: lists the unchecked stage"
 
+# --- 8. PLANS_GLOB from .dev-qual.env, with spaces in the folder name; no
+#        frontmatter means active; stages may be markdown headings ---
+GLOBPLAN="$(mk_tmp_repo)"
+mkdir -p "$GLOBPLAN/docs/prompts/phase 04 - x"
+printf '%s\n' '# A plan with no frontmatter' '### - [x] 1. Done stage' \
+  '### - [ ] 2. Heading stage still open' \
+  >"$GLOBPLAN/docs/prompts/phase 04 - x/001.01.01.plan - thing.md"
+printf '%s\n' "- [ ] a prompt's checklist, not a plan" \
+  >"$GLOBPLAN/docs/prompts/phase 04 - x/001.01.00.prompt - thing.md"
+printf '%s\n' "PLANS_GLOB='docs/prompts/phase 04 - x/*.plan*.md'" >"$GLOBPLAN/.dev-qual.env"
+CODE=0
+OUT9="$(bash "$REPO_ROOT/scripts/plan-status.sh" --project "$GLOBPLAN")" || CODE=$?
+assert_eq 1 "$CODE" "plan-status: PLANS_GLOB plan with an open stage exits 1"
+assert_contains "$OUT9" "Heading stage still open" "plan-status: lists a heading-style stage"
+assert_not_contains "$OUT9" "Done stage" "plan-status: ticked heading stage not listed"
+assert_not_contains "$OUT9" "not a plan" "plan-status: files outside PLANS_GLOB ignored"
+
+# The environment overrides the state file
+CODE=0
+PLANS_GLOB='nowhere/*.md' bash "$REPO_ROOT/scripts/plan-status.sh" --project "$GLOBPLAN" >/dev/null || CODE=$?
+assert_eq 0 "$CODE" "plan-status: PLANS_GLOB from the environment wins"
+
+# Frontmatter without status: active still means inactive
+DONEPLAN="$(mk_tmp_repo)"
+mkdir -p "$DONEPLAN/docs/plans"
+printf '%s\n' '---' 'status: done' '---' '- [ ] leftover' >"$DONEPLAN/docs/plans/p.md"
+CODE=0
+bash "$REPO_ROOT/scripts/plan-status.sh" --project "$DONEPLAN" >/dev/null || CODE=$?
+assert_eq 0 "$CODE" "plan-status: status: done plan ignored"
+
 finish
