@@ -1,6 +1,8 @@
 # Claude Code instructions
 
-Follow `dev-qual/agents-files/remote/AGENTS.md` — those rules are mandatory. If this project has its own AGENTS.md merged from it, that copy governs.
+@AGENTS.md
+
+The rules imported above are mandatory. They are imported, not just referenced, so they are in context from the start of every session; the guidance docs they route to are still read on demand.
 
 ## Claude Code specifics
 

@@ -30,7 +30,7 @@ Behaviours that live in an agent's memory get forgotten, especially by small-con
 3. Agent hooks, via `dev-qual/scripts/agent-hook.sh`, are wired for Claude Code (`.claude/settings.json`) and pi (the package's extension):
    - **post-edit**: `check.sh --fast` after each edit; failures go back to the agent.
    - **session-start**: reports available dev-qual updates and, at user scope, offers the repo's git hooks.
-   - **stop**: when code (not just docs) changed, runs the fast gate and lists unticked stages of active plans in `docs/plans/`, blocking the agent's finish once.
+   - **stop**: when code (not just docs) changed, runs the fast gate and lists unticked stages of active plans (`docs/plans/*.md`, or `PLANS_GLOB` in `.dev-qual.env`), blocking the agent's finish once.
 4. OpenCode reads the entry instructions and skills routing from AGENTS.md; it has no hooks, so the git hooks are its gate.
 
 ## Scripts

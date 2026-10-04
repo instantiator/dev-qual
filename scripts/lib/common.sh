@@ -183,8 +183,10 @@ remove_block() {
 # <checkout-abs>. Project scope prints the file unchanged. User scope
 # rewrites the "dev-qual/ is in this repo..." sentence to point at the
 # absolute checkout, then rewrites every other dev-qual/ path the same way.
+# It also points CLAUDE.md's `@AGENTS.md` import at the checkout's remote
+# AGENTS.md, since a user-scope install writes no AGENTS.md beside it.
 render_entry() {
-  local source="$1" scope="$2" checkout_abs="$3" content old new placeholder
+  local source="$1" scope="$2" checkout_abs="$3" content old new placeholder nl
   content="$(cat "$source")"
   if [ "$scope" != "user" ]; then
     printf '%s\n' "$content"
@@ -197,6 +199,8 @@ render_entry() {
   content="${content/"$old"/$placeholder}"
   content="${content//dev-qual\//$checkout_abs/}"
   content="${content/"$placeholder"/$new}"
+  nl=$'\n'
+  content="${content/${nl}@AGENTS.md${nl}/${nl}@$checkout_abs/agents-files/remote/AGENTS.md${nl}}"
   printf '%s\n' "$content"
 }
 

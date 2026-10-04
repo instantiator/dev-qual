@@ -39,7 +39,7 @@ git submodule add https://github.com/instantiator/dev-qual
 ./dev-qual/install.sh
 ```
 
-This writes into the repo: AGENTS.md and CLAUDE.md blocks, `.claude/` skills and hooks, and `.dev-qual.env`, which records your choices. If the project uses Prettier, it also adds a block to `.prettierignore` listing every submodule, dev-qual included: each is its own repo's to lint. `check.sh` skips submodules for the linters it runs itself, and upgrades keep the block in step as submodules come and go. Commit `.dev-qual.env` so teammates can run `./dev-qual/install.sh --from-config`. The installer also offers the git hooks.
+This writes into the repo: AGENTS.md and CLAUDE.md blocks, `.claude/` skills and hooks, and `.dev-qual.env`, which records your choices. If the project uses Prettier, it also adds a block to `.prettierignore` listing every submodule, dev-qual included: each is its own repo's to lint. `check.sh` skips submodules for the linters it runs itself, and upgrades keep the block in step as submodules come and go. Commit `.dev-qual.env` so teammates can run `./dev-qual/install.sh --from-config`. If your plans live somewhere other than `docs/plans/`, add a line such as `PLANS_GLOB='docs/prompts/phase 04/*.plan*.md'` to it; re-installs keep it. The installer also offers the git hooks.
 
 ### For all your repositories (user scope)
 
@@ -130,7 +130,7 @@ Claude Code (through `.claude/settings.json`) and pi (through the package's exte
 |-|-|
 | post-edit | Runs `check.sh --fast` after each edit and shows the agent any failures. |
 | session-start | Reports a dev-qual update if one is available; at user scope, offers git hooks to a repo without them. |
-| stop | When code (not just docs) has changed, runs the fast gate and lists unticked stages of active plans in `docs/plans/`, blocking the agent from finishing once. |
+| stop | When code (not just docs) has changed, runs the fast gate and lists unticked stages of active plans (`docs/plans/*.md`, or `PLANS_GLOB` in `.dev-qual.env`), blocking the agent from finishing once. |
 
 ## Third party tools
 

@@ -144,6 +144,8 @@ if [ "$SCOPE" = "project" ]; then
 else
   CHECKOUT="$REPO"
 fi
+# Settings with no installer question survive a re-install: keep the old value.
+PLANS_GLOB="${PLANS_GLOB:-$(state_value "$STATE_FILE" PLANS_GLOB)}"
 mkdir -p "$(dirname "$STATE_FILE")"
 {
   printf 'SCOPE=%q\n' "$SCOPE"
@@ -152,6 +154,7 @@ mkdir -p "$(dirname "$STATE_FILE")"
   printf 'HOOKS=%q\n' "$HOOKS"
   printf 'CHECKOUT=%q\n' "$CHECKOUT"
   printf 'ENABLED=%q\n' "1"
+  [ -z "$PLANS_GLOB" ] || printf 'PLANS_GLOB=%q\n' "$PLANS_GLOB"
 } >"$STATE_FILE"
 echo "Wrote $STATE_FILE"
 
