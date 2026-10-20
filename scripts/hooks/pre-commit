@@ -68,6 +68,8 @@ bash "$FIXUPS"
 HELD_BACK=""
 while read -r file; do
   [ -n "$file" ] || continue
+  # A staged deletion is already in the index, and has no file to re-add
+  [ -e "$TOP/$file" ] || continue
   if printf '%s\n' "$PARTIAL" | grep -Fxq "$file"; then
     HELD_BACK="$HELD_BACK
 $file"
