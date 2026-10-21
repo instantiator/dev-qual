@@ -93,4 +93,18 @@ CODE=0
 git -C "$MONO" commit -qm mono >/dev/null 2>&1 || CODE=$?
 assert_eq 0 "$CODE" "nested node_modules and submodule checkouts are linked into the snapshot"
 
+# A staged deletion commits once the fixups have run: there's no file to re-stage
+DEL_REPO="$(mk_tmp_repo)"
+git -C "$DEL_REPO" config core.hooksPath "$REPO_ROOT/scripts/hooks"
+mkdir -p "$DEL_REPO/scripts"
+printf '#!/usr/bin/env bash\ntrue\n' >"$DEL_REPO/scripts/pre-commit-fixups.sh"
+chmod +x "$DEL_REPO/scripts/pre-commit-fixups.sh"
+printf '%s' "$CLEAN" >"$DEL_REPO/gone.sh"
+git -C "$DEL_REPO" add .
+git -C "$DEL_REPO" commit -qm init >/dev/null 2>&1
+git -C "$DEL_REPO" rm -q gone.sh
+CODE=0
+git -C "$DEL_REPO" commit -qm "delete" >/dev/null 2>&1 || CODE=$?
+assert_eq 0 "$CODE" "a staged deletion does not fail the fixup re-staging"
+
 finish

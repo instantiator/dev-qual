@@ -40,6 +40,8 @@ PROJ1="$(mk_tmp_project)"
 OUT="$(bash "$PROJ1/dev-qual/install.sh" --project "$PROJ1" --yes --tier local --platforms claude,opencode --hooks no 2>&1)"
 assert_eq 1 "$(grep -c 'dev-qual:start -->' "$PROJ1/AGENTS.md")" "one dev-qual block in AGENTS.md"
 assert_eq 1 "$(grep -c 'dev-qual:skills:start -->' "$PROJ1/AGENTS.md")" "one dev-qual:skills block in AGENTS.md"
+assert_eq 0 "$(awk 'prev == "" && $0 == "" { n++ } { prev = $0 } END { print n + 0 }' "$PROJ1/AGENTS.md")" \
+  "AGENTS.md has no double blank lines (markdownlint MD012)"
 assert_eq 1 "$(grep -c 'dev-qual:start -->' "$PROJ1/CLAUDE.md")" "one dev-qual block in CLAUDE.md"
 assert_eq 1 "$(grep -cx '@AGENTS.md' "$PROJ1/CLAUDE.md")" "project scope: CLAUDE.md imports AGENTS.md"
 assert_file "$PROJ1/.claude/skills/adr" ".claude/skills/adr symlink exists"

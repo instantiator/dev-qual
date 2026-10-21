@@ -65,7 +65,6 @@ fi
 # Skills routing block, generated from skills/index.md
 SKILLS_TMP="$(mktemp)"
 {
-  echo ''
   echo '## Skills (multi-step task playbooks)'
   echo ''
   echo 'Match the task against a trigger below, then follow that SKILL.md literally.'
