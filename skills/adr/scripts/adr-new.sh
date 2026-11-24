@@ -23,7 +23,8 @@ mkdir -p "$ADR_DIR"
 
 # Next number: highest existing NNNN prefix + 1
 LAST="$(find "$ADR_DIR" -name '[0-9][0-9][0-9][0-9]-*.md' | sed 's|.*/||; s|-.*||' | sort -n | tail -1)"
-NEXT=$(printf '%04d' $(( ${LAST:-0} + 1 )))
+# 10# reads the number as decimal: bash would read 0008 and 0009 as invalid octal
+NEXT=$(printf '%04d' $(( 10#${LAST:-0} + 1 )))
 
 # Slug: lowercase, alphanumerics and hyphens only
 SLUG="$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-//; s/-$//')"
